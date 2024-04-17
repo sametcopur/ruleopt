@@ -38,17 +38,16 @@ X_train, X_test, y_train, y_test = load_data(...)
 tree_parameters = {"max_depth": 3, "class_weight": "balanced"}
 solver = ORToolsSolver()
 rule_cost = Gini()
+random_state = 42
 
 # Initialize the RUGClassifier with specific parameters
-rug = RUGClassifier(
+classifier = RUGClassifier(
     solver=solver,
     rule_cost=rule_cost,
+    random_state=random_state,
     **tree_parameters,
 )
 
-rug.fit(X_train, y_train)
-
-classifier = RUGClassifier(rule_cost = Gini(), random_state = 42)
 classifier.fit(X_train, y_train)
 ```
 4.  **Make Predictions**: Once the model is trained, you can use it to make predictions on new data.

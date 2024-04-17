@@ -36,7 +36,7 @@ class ORToolsSolver(OptimizationSolver):
         """
         Parameters
         ----------
-        penalty : float, default=2.0
+        penalty : float, default=1.0
             Penalty parameter for the cost in the objective function.
 
         solver_type : {"CLP", "GLOP", "GUROBI_LP", "CPLEX_LP", "XPRESS_LP", "GLPK_LP", "HiGHS"}, default="GLOP"

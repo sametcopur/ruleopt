@@ -31,7 +31,7 @@ class CPLEXSolver(OptimizationSolver):
         """
         Parameters
         ----------
-        penalty : float, default=2.0
+        penalty : float, default=1.0
             Penalty parameter for the cost in the objective function.
         use_sparse : bool, default=False
             Determines whether to use a sparse matrix representation for the optimization
