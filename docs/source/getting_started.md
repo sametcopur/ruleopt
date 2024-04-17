@@ -84,7 +84,7 @@ rf_classifier.fit(X_train, y_train)
 
 # Extract rules from the trained model
 rux_classifier = RUXCLassifier(rf_classifier, solver = solver)
-rux.fit(X_train, y_train)
+rux_classifier.fit(X_train, y_train)
 ```
 -   **Integration with XGBoost and LightGBM**: `ruleopt` can also extract rules from models trained with `XGBoost` and  `LightGBM`. Using these rules, `ruleopt` trains a model with optimization to assign weights to rules and improve interpretability.
 
