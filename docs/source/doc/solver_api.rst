@@ -15,11 +15,11 @@ The linear programming model used for optimizing rule sets can be described by t
 
 where
 
-- :math:`w_j` represents the vector of rule weights,
+- :math:`w_j` represents the rule weights,
 - :math:`\lambda \geq 0` is a hyperparameter used to scale different units in the objective function, emphasizing the trade-off between accuracy and rule costs,
-- :math:`c_j` represent the costs associated with each rule, potentially reflecting the complexity or length of the rule for promoting sparsity,
+- :math:`c_j` represents the costs associated with each rule, potentially reflecting the complexity or length of the rule for promoting sparsity,
 - :math:`\hat{a}_{ij}` is a measure of the classification accuracy of rule :math:`j` for sample :math:`i`, given that the sample is covered by the rule,
-- :math:`v_i` are auxiliary variables standing for :math:`v_i \geq L(\hat{y}_i(w), y_i)`, where a value of :math:`v_i = 0` indicates correct classification.
+- :math:`v_i` is a auxiliary variable standing for :math:`v_i \geq L(\hat{y}_i(w), y_i)`, where a value of :math:`v_i = 0` indicates correct classification.
 
 For detailed information, please refer to `our manuscript <https://arxiv.org/abs/2104.10751>`_.
 

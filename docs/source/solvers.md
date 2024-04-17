@@ -10,7 +10,7 @@
 
 In addition to the above, `ruleopt` integrates with Google's **OR-Tools**, offering access to a comprehensive suite of solvers. _For users primarily interested in free solvers, we recommend starting with the default configuration provided by OR-Tools for simplicity and ease of use._
 
-For the list of supported solvers through, please see **OR-Tools** [webpage](https://developers.google.com/optimization).
+For the list of supported solvers through please see **OR-Tools** [webpage](https://developers.google.com/optimization).
 
 ### Note
 

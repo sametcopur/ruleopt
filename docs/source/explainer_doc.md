@@ -88,10 +88,10 @@ This step reveals the specific conditions or thresholds for various features lik
 Identify rules applicable to samples in the test set:
 
 ```python
-applicable_rules = exp.find_applicable_rules_for_samples(X_test, feature_names=["sepal length", "sepal width", "petal length", "petal, width"], info=True)
+applicable_rules = exp.find_applicable_rules_for_samples(X_test, feature_names=["sepal length", "sepal width", "petal length", "petal width"], info=True)
 ```
 
-By applying the classifier rules to the test samples, we identify which rules are activated for individual instances and observe their respective weights.
+By applying the classifier's rules to the test samples, we identify which rules are activated for individual instances and observe their respective weights.
 
 ```markdown
 Rules for instance 0
@@ -153,4 +153,4 @@ Average length of rules per sample: 1.75
 
 ## Conclusion
 
-This example shows how to classify the Iris dataset using `RUGClassifier` and analyze the resulting rules using the `Explainer`. For more information on `ruleopt` and its features, visit the official documentation.
+This example shows how to classify the Iris dataset using `RUGClassifier` and analyzes the resulting rules using the `Explainer`. For more information on `ruleopt` and its features, visit the official documentation.

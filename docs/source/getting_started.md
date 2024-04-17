@@ -61,7 +61,7 @@ predictions = classifier.predict(X_test)
 Congratulations on running your first model with `ruleopt`! To dive deeper into the capabilities of our library, explore the following resources:
 
 -   **Detailed Tutorials**: Walk through more examples and learn different techniques in [our tutorials section on Github](https://github.com/sametcopur/ruleopt/tree/main/examples).
--   **API Reference**: Get detailed information on every function, class, and method provided by `ruleopt`on API Reference.
+-   **API Reference**: Get detailed information on every function, class, and method provided by `ruleopt` in the API Reference.
 
 ## Important Features
 
@@ -87,7 +87,7 @@ rf_classifier.fit(X_train, y_train)
 rux_classifier = RUXCLassifier(rf_classifier, solver = solver)
 rux.fit(X_train, y_train)
 ```
--   **Integration with XGBoost and LightGBM**: `ruleopt` can also extract rules from models trained with `XGBoost` and  `LightGBM`. Using these rules, `ruleopt` trains a model with optimization to assigns weights to rules and improve interpretability.
+-   **Integration with XGBoost and LightGBM**: `ruleopt` can also extract rules from models trained with `XGBoost` and  `LightGBM`. Using these rules, `ruleopt` trains a model with optimization to assign weights to rules and improve interpretability.
 
 ```python
 from ruleopt import RUXLGBMClassifier #RUXXGBClassifier
