@@ -1,0 +1,48 @@
+[project]
+name = "ruleopt"
+version = "1.0.0"
+
+dependencies = [
+    "scikit-learn>=1.4.1",
+    "numpy>=1.25.2",
+    "pandas>=2.0.3",
+    "scipy>=1.11.4",
+    "ortools>=9.9.3963",
+]
+authors = [
+    { name = "Ilker Birbil", email = 'sibirbil@gmail.com' },
+    { name = "Nursen Aydin", email = "nursenaydin@gmail.com" },
+    { name = "Ozgür Martin", email = "ozgurmartin@gmail.com" },
+    { name = "Samet Copur", email = "sametcopur@yahoo.com" },
+]
+
+description = "Optimization-Based Rule Learning for Classification"
+readme = "README.md"
+license = {text = "BSD 3-Clause License"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+keywords = [
+    "python",
+    "data-science",
+    "machine-learning",
+    "linear-programming",
+    "machine-learning-library",
+    "explainable-ai",
+]
+
+requires-python = ">=3.9"
+
+[project.urls]
+Documentation = "https://ruleopt.readthedocs.io/"
+Repository = "https://github.com/sametcopur/ruleopt"
+Tracker = "https://github.com/sametcopur/ruleopt/issues"
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-*"
+
+[build-system]
+requires = ["setuptools", "wheel", "Cython", "numpy"]
+build-backend = "setuptools.build_meta"

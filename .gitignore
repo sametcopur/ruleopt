@@ -1,0 +1,11 @@
+*.pyc
+*.html
+*.log
+*.c
+*.pyd
+*.exp
+*.lib
+*.obj
+*.json
+*.o
+*.so

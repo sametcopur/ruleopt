@@ -1,0 +1,8 @@
+scikit-learn>=1.4.1
+numpy>=1.25.2
+pandas>=2.0.3
+scipy>=1.11.4
+numpydoc>=1.6.0
+myst-parser>=2.0.0
+sphinx_rtd_theme>=2.0.0
+ortools>=9.9.3963
