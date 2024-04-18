@@ -12,10 +12,15 @@ class OptimizationSolver(ABC):
 
     def __init__(self) -> None:
         super().__init__()
-        if not hasattr(self, "penalty"):
-            raise AttributeError("Subclasses must define 'penalty'")
-        if not hasattr(self, "use_sparse"):
-            raise AttributeError("Subclasses must define 'use_sparse'")
+        self.penalty: float | int
+        self.use_sparse: bool
+        self.solver_type: str | None
+        self.lr: float | int | None
+        self.constraint_cost: float | int | None
+        self.weight_decay: float | int | None
+        self.patience: int | None
+        self.device: str | None
+        self._check_params()
 
     @abstractmethod
     def __call__(self, *args: Any, **kwds: Any) -> Any:
@@ -32,6 +37,12 @@ class OptimizationSolver(ABC):
         pass
 
     def _check_params(self):
+        if not hasattr(self, "penalty"):
+            raise AttributeError("Subclasses must define 'penalty'")
+        
+        if not hasattr(self, "use_sparse"):
+            raise AttributeError("Subclasses must define 'use_sparse'")
+        
         if not isinstance(self.penalty, (float, int)) or self.penalty <= 0:
             raise TypeError("penalty must be a positive float.")
 

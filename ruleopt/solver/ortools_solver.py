@@ -51,7 +51,6 @@ class ORToolsSolver(OptimizationSolver):
         self.penalty = penalty
         self.use_sparse = use_sparse
         super().__init__()
-        super()._check_params()
 
     def __call__(self, coefficients, k, sample_weight, normalization_constant, *args, **kwargs) -> Any:
         """
