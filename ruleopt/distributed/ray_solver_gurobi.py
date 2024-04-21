@@ -35,43 +35,44 @@ def gurobi_solver(
     Tuple[np.array, np.array, List]: The optimal ws, vs and dual values.
     """
     import gurobipy as gp
+    
+    with gp.Env() as env, gp.Model(env=env) as modprimal:
 
-    # Create the Ahat matrix from given coefficients
-    n, m = dist_a_hat.shape
+        # Create the Ahat matrix from given coefficients
+        n, m = dist_a_hat.shape
 
-    # Set up the primal model
-    modprimal = gp.Model("RUXG Primal")
-    modprimal.setParam("OutputFlag", False)
+        # Set up the primal model
+        modprimal.setParam("OutputFlag", False)
 
-    # Define variables
-    vs = modprimal.addMVar(shape=int(n), name="vs")
-    ws = modprimal.addMVar(shape=int(m), name="ws")
+        # Define variables
+        vs = modprimal.addMVar(shape=int(n), name="vs")
+        ws = modprimal.addMVar(shape=int(m), name="ws")
 
-    if ws0 is not None:
-        tempws = np.zeros(m)
-        tempws[: len(ws0)] = ws0
-        ws.setAttr("Start", tempws)
+        if ws0 is not None:
+            tempws = np.zeros(m)
+            tempws[: len(ws0)] = ws0
+            ws.setAttr("Start", tempws)
 
-    # Set objective function
-    objective = (
-        np.ones(n) @ vs
-        + (costs * penalty) @ ws
-        + theta_k @ (ws - ws_par)
-        + (learning_rate / 2) * (ws - ws_par) @ (ws - ws_par)
-    )
-    modprimal.setObjective(objective, gp.GRB.MINIMIZE)
+        # Set objective function
+        objective = (
+            np.ones(n) @ vs
+            + (costs * penalty) @ ws
+            + theta_k @ (ws - ws_par)
+            + (learning_rate / 2) * (ws - ws_par) @ (ws - ws_par)
+        )
+        modprimal.setObjective(objective, gp.GRB.MINIMIZE)
 
-    # Add constraints
-    modprimal.addConstr(dist_a_hat @ ws + vs >= 1.0, name="Ahat Constraints")
+        # Add constraints
+        modprimal.addConstr(dist_a_hat @ ws + vs >= 1.0, name="Ahat Constraints")
 
-    # Optimize the model
-    modprimal.update()
-    modprimal.optimize()
+        # Optimize the model
+        modprimal.update()
+        modprimal.optimize()
 
-    # Extract betas from the dual values of the constraints
-    betas = np.array(modprimal.getAttr(gp.GRB.Attr.Pi)[:n])
+        # Extract betas from the dual values of the constraints
+        betas = np.array(modprimal.getAttr(gp.GRB.Attr.Pi)[:n])
 
-    return ws.X, betas
+        return ws.X, betas
 
 
 def gurobi_parallel_solver(
