@@ -190,8 +190,8 @@ class _RUGSKLEARN(_RUGBASE):
                 red_cost = float("inf")
 
             if red_cost > 0:
-                covers_fill = np.full((covers.shape[0],), fill_ahat, dtype=np.intp)
-                covers_col = np.full((covers.shape[0],), col, dtype=np.intp)
+                covers_fill = np.full((covers.shape[0],), fill_ahat, dtype=np.float32)
+                covers_col = np.full((covers.shape[0],), col, dtype=np.int32)
 
 
                 self.coefficients_.rows = np.concatenate(
