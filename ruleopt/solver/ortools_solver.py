@@ -124,19 +124,3 @@ class ORToolsSolver(OptimizationSolver):
         betas = solver.dual_values(model._get_linear_constraints()).values
 
         return ws, betas
-
-    def _validate_parameters(self, solver_type, penalty_parameter):
-        valid_solvers = [
-            "CLP",
-            "GLOP",
-            "GUROBI_LP",
-            "CPLEX_LP",
-            "XPRESS_LP",
-            "GLPK_LP",
-            "HiGHS",
-        ]
-        if not isinstance(solver_type, str) or solver_type not in valid_solvers:
-            raise ValueError(f"solver_type must be one of {valid_solvers}.")
-
-        if not isinstance(penalty_parameter, (float, int)) or penalty_parameter <= 0:
-            raise ValueError("penalty_parameter must be a positive float or integer.")

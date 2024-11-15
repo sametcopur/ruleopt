@@ -52,6 +52,7 @@ class OptimizationSolver(ABC):
         if hasattr(self, "solver_type"):
             valid_solvers = [
                 "CLP",
+                "PDLP",
                 "GLOP",
                 "GUROBI_LP",
                 "CPLEX_LP",
