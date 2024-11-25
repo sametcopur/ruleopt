@@ -10,7 +10,15 @@ compile_args = []
 if platform.system() == "Windows":
     compile_args = ["/O2", "/favor:ATOM", "/fp:fast"]
 elif platform.system() == "Darwin":
-    compile_args = ["-Ofast", "-funroll-loops"]
+    compile_args = [
+        "-O3",
+        "-ffast-math",
+        "-funroll-loops",
+        "-ftree-vectorize",
+        "-fstrict-aliasing",
+        "-fstack-protector-strong",
+        "-Wno-unreachable-code-fallthrough",
+    ]
 else:
     compile_args = ["-Ofast", "-march=native", "-funroll-loops"]
 
@@ -23,13 +31,19 @@ ext_modules = cythonize(
             extra_compile_args=compile_args
             + ["-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"],
             language="c",
-        )
+        ),
+        Extension(
+            "ruleopt.solver.beta_filler",
+            ["ruleopt/solver/beta_filler.pyx"],
+            include_dirs=[numpy_include_dir],
+            extra_compile_args=compile_args
+            + ["-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"],
+            language="c",
+        ),
     ],
     language_level="3",
 )
 
 setup(
-    packages=find_packages(),
-    cmdclass={"build_ext": build_ext},
-    ext_modules=ext_modules
+    packages=find_packages(), cmdclass={"build_ext": build_ext}, ext_modules=ext_modules
 )

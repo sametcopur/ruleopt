@@ -48,6 +48,7 @@ class CPLEXSolver(OptimizationSolver):
         k: int,
         sample_weight,
         normalization_constant,
+        rng,
         ws0: np.ndarray = None,
         *args,
         **kwargs,
@@ -91,8 +92,12 @@ class CPLEXSolver(OptimizationSolver):
         # Primal Model
         modprimal = Model("RUXG Primal")
 
+        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(
+            a_hat, sample_weight
+        )
+
         # Variables
-        vs = modprimal.continuous_var_list(n, name="vs")
+        vs = modprimal.continuous_var_list(unique_rows.shape[0], name="vs")
         ws = modprimal.continuous_var_list(m, name="ws")
 
         # Set initial values
@@ -106,19 +111,24 @@ class CPLEXSolver(OptimizationSolver):
 
         # Objective
         modprimal.minimize(
-            modprimal.sum(vs * sample_weight)
+            modprimal.sum(vs * adjusted_sample_weight)
             + modprimal.scal_prod(ws, costs * self.penalty * normalization_constant)
         )
         # Constraints
-        for i in range(n):
+        for i in range(unique_rows.shape[0]):
             modprimal.add_constraint(
-                modprimal.sum(a_hat[i, j] * ws[j] for j in range(m)) + vs[i] >= 1.0
+                modprimal.sum(unique_rows[i, j] * ws[j] for j in range(m)) + vs[i]
+                >= 1.0
             )
 
         modprimal.solve()
 
-        betas = np.array(
+        duals_unique = np.array(
             [c.dual_value for c in modprimal.iter_constraints()], dtype=np.float64
+        )
+
+        betas = self.fill_betas(
+            n, duals_unique, inverse_indices.ravel(), sample_weight, rng
         )
         ws = np.array([v.solution_value for v in ws], dtype=np.float64)
 

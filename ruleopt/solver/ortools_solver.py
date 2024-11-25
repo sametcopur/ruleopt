@@ -11,7 +11,7 @@ ORTOOLS_AVAILABLE = check_module_available("ortools")
 class ORToolsSolver(OptimizationSolver):
     """
     A solver wrapper class for linear optimization using the Google's OR-Tools solver.
-    
+
     The solver supports both dense and sparse matrix representations.
 
     This solver can handle large-scale linear programming problems by interfacing with
@@ -52,7 +52,16 @@ class ORToolsSolver(OptimizationSolver):
         self.use_sparse = use_sparse
         super().__init__()
 
-    def __call__(self, coefficients, k, sample_weight, normalization_constant, *args, **kwargs) -> Any:
+    def __call__(
+        self,
+        coefficients,
+        k,
+        sample_weight,
+        normalization_constant,
+        rng,
+        *args,
+        **kwargs,
+    ) -> Any:
         """
         Solves a linear optimization problem with the given coefficients and penalty.
 
@@ -80,6 +89,15 @@ class ORToolsSolver(OptimizationSolver):
         from ortools.linear_solver.python import model_builder
         from pandas import Index
 
+        # Initialize the model and solver
+        model = model_builder.Model()
+        solver = model_builder.Solver(self.solver_type)
+
+        if not solver.solver_is_supported():
+            raise ValueError(
+                f"Support for {self.solver_type} not linked in, or the license was not found."
+            )
+
         a_hat = csr_matrix(
             (
                 coefficients.yvals,
@@ -93,34 +111,42 @@ class ORToolsSolver(OptimizationSolver):
 
         n, m = a_hat.shape
 
-        costs = np.array(coefficients.costs, dtype=np.float32)
+        # Ensure costs are a numpy array of type float32
+        costs = np.asarray(coefficients.costs, dtype=np.float32)
 
-        model = model_builder.Model()
-        solver = model_builder.Solver(self.solver_type)
+        # adjusted_sample_weight, n_unique = self.group_contraints(a_hat, sample_weight)
 
-        if not solver.solver_is_supported():
-            raise ValueError(
-                f"Support for {self.solver_type} not linked in, or the license ",
-                "was not found.",
-            )
+        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(
+            a_hat, sample_weight
+        )
 
-        # Variables
+        # Define variables
         vs = model.new_num_var_series(
-            name="vs", index=Index(np.arange(n)), lower_bounds=0
+            name="vs", index=Index(np.arange(unique_rows.shape[0])), lower_bounds=0
         )
         ws = model.new_num_var_series(
             name="ws", index=Index(np.arange(m)), lower_bounds=0
         )
 
-        # Objective
-        model.minimize(vs @ sample_weight + normalization_constant * self.penalty * costs @ ws)
-
+        # Objective function
+        model.minimize(
+            vs @ adjusted_sample_weight
+            + normalization_constant * self.penalty * costs @ ws
+        )
         # Constraints
-        model.add((a_hat @ ws + vs).map(lambda x: x >= 1))
+        model.add((unique_rows @ ws + vs).map(lambda x: x >= 1))
+        # Solve the optimization problem
 
         solver.solve(model)
 
+        # Retrieve the optimized weights
         ws = solver.values(ws).values
-        betas = solver.dual_values(model._get_linear_constraints()).values
+
+        # Get dual variables for the unique constraints
+        duals_unique = solver.dual_values(model._get_linear_constraints()).values
+
+        betas = self.fill_betas(
+            n, duals_unique, inverse_indices.ravel(), sample_weight, rng
+        )
 
         return ws, betas
