@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 import warnings
 import numpy as np
-from .beta_filler import fill_betas
+from .solver_utils import fill_betas
 
 
 class OptimizationSolver(ABC):

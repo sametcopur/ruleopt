@@ -4,7 +4,6 @@ import numpy as np
 from ..utils import check_module_available
 from .base import OptimizationSolver
 
-
 ORTOOLS_AVAILABLE = check_module_available("ortools")
 
 
@@ -86,17 +85,7 @@ class ORToolsSolver(OptimizationSolver):
             If the specified solver type is not supported or not linked correctly.
         """
         ### LAZY IMPORT
-        from ortools.linear_solver.python import model_builder
-        from pandas import Index
-
-        # Initialize the model and solver
-        model = model_builder.Model()
-        solver = model_builder.Solver(self.solver_type)
-
-        if not solver.solver_is_supported():
-            raise ValueError(
-                f"Support for {self.solver_type} not linked in, or the license was not found."
-            )
+        from .solver_utils import solve_ortools
 
         a_hat = csr_matrix(
             (
@@ -111,39 +100,18 @@ class ORToolsSolver(OptimizationSolver):
 
         n, m = a_hat.shape
 
-        # Ensure costs are a numpy array of type float32
-        costs = np.asarray(coefficients.costs, dtype=np.float32)
-
-        # adjusted_sample_weight, n_unique = self.group_contraints(a_hat, sample_weight)
-
         unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(
             a_hat, sample_weight
         )
 
-        # Define variables
-        vs = model.new_num_var_series(
-            name="vs", index=Index(np.arange(unique_rows.shape[0])), lower_bounds=0
+        ws, duals_unique = solve_ortools(
+            unique_rows,
+            adjusted_sample_weight,
+            normalization_constant,
+            self.penalty,
+            self.solver_type,
+            coefficients.costs,
         )
-        ws = model.new_num_var_series(
-            name="ws", index=Index(np.arange(m)), lower_bounds=0
-        )
-
-        # Objective function
-        model.minimize(
-            vs @ adjusted_sample_weight
-            + normalization_constant * self.penalty * costs @ ws
-        )
-        # Constraints
-        model.add((unique_rows @ ws + vs).map(lambda x: x >= 1))
-        # Solve the optimization problem
-
-        solver.solve(model)
-
-        # Retrieve the optimized weights
-        ws = solver.values(ws).values
-
-        # Get dual variables for the unique constraints
-        duals_unique = solver.dual_values(model._get_linear_constraints()).values
 
         betas = self.fill_betas(
             n, duals_unique, inverse_indices.ravel(), sample_weight, rng
