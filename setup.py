@@ -33,8 +33,8 @@ ext_modules = cythonize(
             language="c",
         ),
         Extension(
-            "ruleopt.solver.beta_filler",
-            ["ruleopt/solver/beta_filler.pyx"],
+            "ruleopt.solver.solver_utils",
+            ["ruleopt/solver/solver_utils.pyx"],
             include_dirs=[numpy_include_dir],
             extra_compile_args=compile_args
             + ["-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"],
