@@ -49,6 +49,7 @@ class GurobiSolver(OptimizationSolver):
         k: int,
         sample_weight,
         normalization_constant,
+        rng,
         ws0: np.ndarray = None,
         *args,
         **kwargs,
@@ -87,13 +88,15 @@ class GurobiSolver(OptimizationSolver):
             a_hat = a_hat.toarray()
 
         costs = np.array(coefficients.costs, copy=False)
+        
+        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(a_hat, sample_weight)
 
         n, m = a_hat.shape
 
         modprimal = Model("RUG Primal")
         modprimal.setParam("OutputFlag", False)
         # Variables
-        vs = modprimal.addMVar(shape=int(n), name="vs")
+        vs = modprimal.addMVar(shape=int(unique_rows.shape[0]), name="vs")
         ws = modprimal.addMVar(shape=int(m), name="ws")
 
         if ws0 is not None:
@@ -104,14 +107,16 @@ class GurobiSolver(OptimizationSolver):
 
         # Objective
         modprimal.setObjective(
-            sample_weight @ vs + (costs * self.penalty * normalization_constant) @ ws,
+            adjusted_sample_weight @ vs + (costs * self.penalty * normalization_constant) @ ws,
             GRB.MINIMIZE,
         )
         # Constraints
-        modprimal.addConstr(a_hat @ ws + vs >= 1.0, name="a_hat Constraints")
+        modprimal.addConstr(unique_rows @ ws + vs >= 1.0, name="a_hat Constraints")
 
         modprimal.optimize()
 
-        betas = np.array(modprimal.getAttr(GRB.Attr.Pi)[:n])
+        duals_unique = np.array(modprimal.getAttr(GRB.Attr.Pi)[:n])
 
+        betas = self.fill_betas(n, duals_unique, inverse_indices.ravel(), sample_weight, rng)
+        
         return ws.X, betas
