@@ -10,15 +10,7 @@ compile_args = []
 if platform.system() == "Windows":
     compile_args = ["/O2", "/favor:ATOM", "/fp:fast"]
 elif platform.system() == "Darwin":
-    compile_args = [
-        "-O3",
-        "-ffast-math",
-        "-funroll-loops",
-        "-ftree-vectorize",
-        "-fstrict-aliasing",
-        "-fstack-protector-strong",
-        "-Wno-unreachable-code-fallthrough",
-    ]
+    compile_args = ["-Ofast", "-funroll-loops"]
 else:
     compile_args = ["-Ofast", "-march=native", "-funroll-loops"]
 

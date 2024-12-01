@@ -20,7 +20,7 @@ class RUGClassifier(_RUGSKLEARN):
         self,
         solver=ORToolsSolver(),
         rule_cost=Gini(),
-        max_rmp_calls=20,
+        max_rmp_calls=10,
         threshold: float = 1.0e-6,
         random_state: int | None = None,
         class_weight: dict | str | None = None,

@@ -18,8 +18,8 @@ sys.path.insert(0, project_path)
 project = "ruleopt"
 copyright = "2024, Samet Çopur"
 author = "Samet Çopur"
-version = '1.0.0'
-release = '1.0.0'
+version = '1.1.0'
+release = '1.1.0'
 autodoc_member_order = "bysource"
 extensions = [
     "sphinx.ext.autodoc",
