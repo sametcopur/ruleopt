@@ -4,14 +4,13 @@ import numpy as np
 from ..utils import check_module_available
 from .base import OptimizationSolver
 
-
 ORTOOLS_AVAILABLE = check_module_available("ortools")
 
 
 class ORToolsSolver(OptimizationSolver):
     """
     A solver wrapper class for linear optimization using the Google's OR-Tools solver.
-    
+
     The solver supports both dense and sparse matrix representations.
 
     This solver can handle large-scale linear programming problems by interfacing with
@@ -52,7 +51,16 @@ class ORToolsSolver(OptimizationSolver):
         self.use_sparse = use_sparse
         super().__init__()
 
-    def __call__(self, coefficients, k, sample_weight, normalization_constant, *args, **kwargs) -> Any:
+    def __call__(
+        self,
+        coefficients,
+        k,
+        sample_weight,
+        normalization_constant,
+        rng,
+        *args,
+        **kwargs,
+    ) -> Any:
         """
         Solves a linear optimization problem with the given coefficients and penalty.
 
@@ -77,8 +85,7 @@ class ORToolsSolver(OptimizationSolver):
             If the specified solver type is not supported or not linked correctly.
         """
         ### LAZY IMPORT
-        from ortools.linear_solver.python import model_builder
-        from pandas import Index
+        from .solver_utils import solve_ortools
 
         a_hat = csr_matrix(
             (
@@ -93,50 +100,21 @@ class ORToolsSolver(OptimizationSolver):
 
         n, m = a_hat.shape
 
-        costs = np.array(coefficients.costs, dtype=np.float32)
-
-        model = model_builder.Model()
-        solver = model_builder.Solver(self.solver_type)
-
-        if not solver.solver_is_supported():
-            raise ValueError(
-                f"Support for {self.solver_type} not linked in, or the license ",
-                "was not found.",
-            )
-
-        # Variables
-        vs = model.new_num_var_series(
-            name="vs", index=Index(np.arange(n)), lower_bounds=0
-        )
-        ws = model.new_num_var_series(
-            name="ws", index=Index(np.arange(m)), lower_bounds=0
+        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(
+            a_hat, sample_weight
         )
 
-        # Objective
-        model.minimize(vs @ sample_weight + normalization_constant * self.penalty * costs @ ws)
+        ws, duals_unique = solve_ortools(
+            unique_rows,
+            adjusted_sample_weight,
+            normalization_constant,
+            self.penalty,
+            self.solver_type,
+            coefficients.costs,
+        )
 
-        # Constraints
-        model.add((a_hat @ ws + vs).map(lambda x: x >= 1))
-
-        solver.solve(model)
-
-        ws = solver.values(ws).values
-        betas = solver.dual_values(model._get_linear_constraints()).values
+        betas = self.fill_betas(
+            n, duals_unique, inverse_indices.ravel(), sample_weight, rng
+        )
 
         return ws, betas
-
-    def _validate_parameters(self, solver_type, penalty_parameter):
-        valid_solvers = [
-            "CLP",
-            "GLOP",
-            "GUROBI_LP",
-            "CPLEX_LP",
-            "XPRESS_LP",
-            "GLPK_LP",
-            "HiGHS",
-        ]
-        if not isinstance(solver_type, str) or solver_type not in valid_solvers:
-            raise ValueError(f"solver_type must be one of {valid_solvers}.")
-
-        if not isinstance(penalty_parameter, (float, int)) or penalty_parameter <= 0:
-            raise ValueError("penalty_parameter must be a positive float or integer.")

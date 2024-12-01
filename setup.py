@@ -23,13 +23,19 @@ ext_modules = cythonize(
             extra_compile_args=compile_args
             + ["-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"],
             language="c",
-        )
+        ),
+        Extension(
+            "ruleopt.solver.solver_utils",
+            ["ruleopt/solver/solver_utils.pyx"],
+            include_dirs=[numpy_include_dir],
+            extra_compile_args=compile_args
+            + ["-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"],
+            language="c",
+        ),
     ],
     language_level="3",
 )
 
 setup(
-    packages=find_packages(),
-    cmdclass={"build_ext": build_ext},
-    ext_modules=ext_modules
+    packages=find_packages(), cmdclass={"build_ext": build_ext}, ext_modules=ext_modules
 )

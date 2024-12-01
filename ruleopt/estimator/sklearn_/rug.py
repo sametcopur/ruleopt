@@ -20,7 +20,7 @@ class RUGClassifier(_RUGSKLEARN):
         self,
         solver=ORToolsSolver(),
         rule_cost=Gini(),
-        max_rmp_calls=20,
+        max_rmp_calls=10,
         threshold: float = 1.0e-6,
         random_state: int | None = None,
         class_weight: dict | str | None = None,
@@ -235,6 +235,7 @@ class RUGClassifier(_RUGSKLEARN):
             k=self.k_,
             sample_weight=sample_weight,
             normalization_constant=normalization_constant,
+            rng=self._rng,
         )
 
         # Rule generation
@@ -246,7 +247,9 @@ class RUGClassifier(_RUGSKLEARN):
             fit_tree = self._fit_decision_tree(x, y, sample_weight=betas)
             self.decision_trees_[treeno] = fit_tree
 
-            no_improvement = self._get_matrix(x, y, vec_y, fit_tree, treeno, betas, normalization_constant)
+            no_improvement = self._get_matrix(
+                x, y, vec_y, fit_tree, treeno, betas, normalization_constant
+            )
 
             if no_improvement:
                 break
@@ -257,6 +260,7 @@ class RUGClassifier(_RUGSKLEARN):
                 ws0=ws.copy(),
                 normalization_constant=normalization_constant,
                 sample_weight=sample_weight,
+                rng=self._rng,
             )
 
         self._fill_rules(ws)
