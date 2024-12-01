@@ -35,7 +35,7 @@ extensions = [
 
 autodoc_typehints = "none"
 
-autodoc_mock_imports = ["ruleopt.aux_classes.aux_classes"]
+autodoc_mock_imports = ["ruleopt.aux_classes.aux_classes", "ruleopt.solver.solver_utils"]
 
 python_use_unqualified_type_names = True
 
