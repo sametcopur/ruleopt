@@ -142,6 +142,7 @@ class RUXClassifier(_RUGSKLEARN):
             k=self.k_,
             sample_weight=sample_weight,
             normalization_constant=normalization_constant,
+            rng=self._rng
         )
 
         # Fill the decision rules based on the weights obtained from the optimization problem

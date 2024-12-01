@@ -48,7 +48,7 @@ class RUGClassifier(_RUGSKLEARN):
             Defines the cost of rules, either as a specific calculation method (RuleCost instance)
             or a fixed cost
 
-        max_rmp_calls : int, default=20
+        max_rmp_calls : int, default=10
             Maximum number of Restricted Master Problem (RMP) iterations allowed during fitting.
 
         class_weight: dict, "balanced" or None, default=None

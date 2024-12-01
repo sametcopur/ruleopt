@@ -303,6 +303,7 @@ class RUXXGBClassifier(_RUGBASE):
             k=self.k_,
             sample_weight=sample_weight,
             normalization_constant=normalization_constant,
+            rng=self._rng
         )
 
         self._fill_rules(ws)
