@@ -11,7 +11,7 @@ A noteworthy feature of `ruleopt` is its capability to either generate new rules
 To get started with `ruleopt`, you'll first need to install the package. You can do this easily via pip:
 
 ```bash
-pip install ruleopt` 
+pip install ruleopt
 ```
 Ensure you have Python 3.9 or later installed on your machine.
 
