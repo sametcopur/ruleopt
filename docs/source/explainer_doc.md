@@ -39,9 +39,9 @@ rule_cost = Gini()
 # Initialize the RUGClassifier with specific parameters
 rug = RUGClassifier(
     solver=solver,
-    tree_parameters=tree_parameters,
     max_rmp_calls=20,
     rule_cost=rule_cost,
+    **tree_parameters,
 )
 
 rug.fit(X_train, y_train)
