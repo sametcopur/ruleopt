@@ -3,7 +3,11 @@
 
 RuleOpt is an optimization-based rule learning algorithm designed for classification problems. Focusing on scalability and interpretability, RuleOpt utilizes linear programming for rule generation and extraction. An earlier version of this work is available in [our manuscript](https://arxiv.org/abs/2104.10751).
 
- The Python library `ruleopt` is capable of extracting rules from ensemble models, and it also implements a novel rule generation scheme. The library ensures compatibility with existing machine learning pipelines, and it is especially efficient for tackling large-scale problems.
+<p align="center" width="100%">
+    <img width="50%" src="./img/flow_chart.png"> 
+</p>
+
+The Python library `ruleopt` is capable of extracting rules from ensemble models, and it also implements a novel rule generation scheme. The library ensures compatibility with existing machine learning pipelines, and it is especially efficient for tackling large-scale problems.
 
 Here are a few highlights of `ruleopt`:
 
@@ -11,10 +15,6 @@ Here are a few highlights of `ruleopt`:
 - **Interpretability**: Prioritizes model transparency by assigning costs to rules in order to achieve a desirable balance with accuracy.
 - **Integration with Machine Learning Libraries**: Facilitates smooth integration with well-known Python libraries `scikit-learn`, `LightGBM`, and `XGBoost`, and existing machine learning pipelines.
 - **Extensive Solver Support**: Supports a wide array of solvers, including _Gurobi_, _CPLEX_ and _OR-Tools_.
-
-<p align="center" width="100%">
-    <img width="50%" src="./img/flow_chart.png"> 
-</p>
 
 
 ### Installation 
