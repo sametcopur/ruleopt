@@ -12,7 +12,7 @@ Here are a few highlights of `ruleopt`:
 - **Integration with Machine Learning Libraries**: Facilitates smooth integration with well-known Python libraries `scikit-learn`, `LightGBM`, and `XGBoost`, and existing machine learning pipelines.
 - **Extensive Solver Support**: Supports a wide array of solvers, including _Gurobi_, _CPLEX_ and _OR-Tools_.
 
-[<img src="./img/flow_chart.png" width="800" />](./img/flow_chart.png)
+[<img src="./img/flow_chart.png" width="600" />](./img/flow_chart.png)
 
 ### Installation 
 To install `ruleopt`, use the following pip command:
