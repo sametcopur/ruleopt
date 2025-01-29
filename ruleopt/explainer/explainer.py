@@ -147,7 +147,7 @@ class Explainer:
                 if len(applied_rules) > 0:
                     for rule_id in applied_rules:
                         self._display_rule_info(
-                            rule_indexs[rule_id], rule, feature_names
+                            rule_indexs[rule_id], selected_rules[rule_id], feature_names
                         )
 
                 else:
