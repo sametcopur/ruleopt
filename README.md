@@ -1,7 +1,7 @@
 # RuleOpt
 ## Optimization-Based Rule Learning for Classification
 
-RuleOpt is an optimization-based rule learning algorithm designed for classification problems. Focusing on scalability and interpretability, RuleOpt utilizes linear programming for rule generation and extraction. An earlier version of this work is available in [our manuscript](https://arxiv.org/abs/2104.10751).
+RuleOpt is an optimization-based rule learning algorithm designed for classification problems. Focusing on scalability and interpretability, RuleOpt utilizes linear programming for rule generation and extraction. An earlier version of this work is available in [our manuscript](https://arxiv.org/abs/2104.10751) (to appear in [Computers & Operations Research](https://www.sciencedirect.com/journal/computers-and-operations-research)).
 
 <p align="center" width="100%">
     <img width="50%" src="./img/flow_chart.png"> 
