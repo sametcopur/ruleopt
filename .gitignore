@@ -9,3 +9,6 @@
 *.json
 *.o
 *.so
+
+build/
+ruleopt.egg-info/
