@@ -1,12 +1,12 @@
 [project]
 name = "ruleopt"
 
-version = "1.1.2"
+version = "1.1.3"
 
 dependencies = [
-    "scikit-learn>=1.5.2",
-    "numpy>=2.1.3",
-    "pandas>=2.2.3",
+    "scikit-learn>=1.7.2",
+    "numpy>=2.2.3",
+    "pandas>=2.3",
     "ortools>=9.11.4210",
 ]
 authors = [
@@ -18,10 +18,9 @@ authors = [
 
 description = "Optimization-Based Rule Learning for Classification"
 readme = "README.md"
-license = {text = "BSD 3-Clause License"}
+license = "BSD-3-Clause"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
 ]
 keywords = [

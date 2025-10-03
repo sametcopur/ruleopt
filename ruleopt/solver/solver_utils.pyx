@@ -1,10 +1,6 @@
 import numpy as np
 cimport numpy as cnp
-from cython cimport boundscheck, wraparound, infer_types
 
-
-@boundscheck(False) 
-@wraparound(False)  
 cpdef cnp.ndarray[cnp.float64_t, ndim=1] fill_betas(
     int n,
     double[::1] duals_unique,
@@ -40,9 +36,7 @@ cpdef cnp.ndarray[cnp.float64_t, ndim=1] fill_betas(
     return np.asarray(betas)
 
 
-@boundscheck(False) 
-@wraparound(False)  
-@infer_types(True)
+
 cpdef solve_ortools(
     double[:, ::1] unique_rows,  # 2D array for constraints
     double[::1] adjusted_sample_weight,  # 1D array for weights

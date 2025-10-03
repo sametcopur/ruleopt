@@ -16,11 +16,11 @@ sys.path.insert(0, project_path)
 
 
 project = "ruleopt"
-copyright = "2024, Samet Çopur"
+copyright = "2025, Samet Çopur"
 author = "Samet Çopur"
 
-version = '1.1.2'
-release = '1.1.2'
+version = '1.1.3'
+release = '1.1.3'
 
 autodoc_member_order = "bysource"
 extensions = [

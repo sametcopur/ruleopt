@@ -86,9 +86,6 @@ cdef class Rule:
 
         return self_clauses == other_clauses
 
-
-    @boundscheck(False) 
-    @wraparound(False)  
     cpdef tuple _get_clause(self, int index):
         cdef int feature = self.clauses[index].feature
         cdef double ub = self.clauses[index].ub
@@ -97,9 +94,6 @@ cdef class Rule:
 
         return feature, ub, lb, na
 
-
-    @boundscheck(False) 
-    @wraparound(False)  
     cpdef add_clause(self, int feature, double ub, double lb, bint na):
         """
         Adds a new clause to the rule or updates an existing clause for the given feature.
@@ -136,8 +130,6 @@ cdef class Rule:
             
             self.n_clauses += 1
 
-    @boundscheck(False)
-    @wraparound(False) 
     cdef char[:] _check_rule_nogil(self, float[:,:] X) noexcept:
         """
         Checks if the rule applies to the given feature values, 
@@ -165,8 +157,6 @@ cdef class Rule:
 
         return result_data
 
-    @boundscheck(False) 
-    @wraparound(False)
     cdef bint _check_clause_nogil(self, float[:] X, int idx) noexcept nogil:
         """
         Checks if a specific clause of the rule applies to the given feature values, 
