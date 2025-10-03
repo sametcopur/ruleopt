@@ -124,7 +124,7 @@ class Explainer:
             A list of lists, where each inner list contains the indices of rules that cover
             the corresponding instance in `x`.
         """
-        x = check_array(np.asarray(x, dtype=np.float32), force_all_finite="allow-nan")
+        x = check_array(np.asarray(x, dtype=np.float32), ensure_all_finite="allow-nan")
 
         selected_rules = []
         rule_indexs = []
@@ -235,7 +235,7 @@ class Explainer:
             A dictionary with calculated metrics: 'num_of_missed', 'avg_num_rules_per_sample',
             and 'avg_rule_length_per_sample'.
         """
-        x = check_array(np.asarray(x, dtype=np.float32), force_all_finite="allow-nan")
+        x = check_array(np.asarray(x, dtype=np.float32), ensure_all_finite="allow-nan")
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")

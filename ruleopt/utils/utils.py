@@ -21,7 +21,7 @@ def check_inputs(x: ArrayLike, y: ArrayLike = None) -> Tuple[np.ndarray, np.ndar
     Tuple[np.ndarray, np.ndarray]
         The validated and preprocessed input matrix `x` and target vector `y`.
     """
-    x = check_array(x, dtype=np.float32, force_all_finite="allow-nan")
+    x = check_array(x, dtype=np.float32, ensure_all_finite="allow-nan")
     if y is not None:
         y = check_array(y, ensure_2d=False, dtype=np.intp)
         return x, y
