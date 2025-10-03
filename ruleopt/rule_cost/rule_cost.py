@@ -12,6 +12,7 @@ class RuleCost(ABC):
     `__call__` method. The `__call__` method allows instances of the subclass to be used
     as if they were functions, directly invoking the cost calculation.
     """
+    eps: float = 1e-8
 
     @abstractmethod
     def __call__(self):
@@ -51,7 +52,7 @@ class Length(RuleCost):
             The cost of the rule, defined as its length.
         """
         cost = len(temp_rule)
-        return cost
+        return cost + self.eps
 
 
 class Gini(RuleCost):
@@ -83,7 +84,7 @@ class Gini(RuleCost):
         """
         probs = np.divide(counts, np.sum(counts))
         cost = 1 - np.sum(np.square(probs))
-        return cost
+        return cost + self.eps
 
 
 class Mixed(RuleCost):
@@ -136,7 +137,7 @@ class Mixed(RuleCost):
         class_separation_term = 1 - (1 - (np.min(covers) / covers.shape[0]))
         data_selection_term = 1 - (covers.shape[0] / y.shape[0])
         cost = self.w * class_separation_term + (1 - self.w) * data_selection_term
-        return cost
+        return cost + self.eps
 
 
 class MixedSigmoid(RuleCost):
@@ -204,4 +205,4 @@ class MixedSigmoid(RuleCost):
                 )
             )
         )
-        return cost
+        return cost + self.eps
