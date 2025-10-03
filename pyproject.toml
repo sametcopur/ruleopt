@@ -18,10 +18,9 @@ authors = [
 
 description = "Optimization-Based Rule Learning for Classification"
 readme = "README.md"
-license = {text = "BSD 3-Clause License"}
+license = "BSD-3-Clause"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
 ]
 keywords = [
