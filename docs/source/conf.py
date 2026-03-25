@@ -29,7 +29,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "numpydoc",
     "sphinx.ext.mathjax",
-    "sphinx_rtd_theme",
+    "furo",
     "myst_parser",
 ]
 
@@ -46,7 +46,7 @@ templates_path = ["_templates"]
 exclude_patterns = []
 
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_static_path = ["_static"]
 
 def setup(app: Sphinx):
