@@ -19,8 +19,8 @@ project = "ruleopt"
 copyright = "2025, Samet Çopur"
 author = "Samet Çopur"
 
-version = '1.1.4'
-release = '1.1.4'
+version = '1.2.0'
+release = '1.2.0'
 
 autodoc_member_order = "bysource"
 extensions = [
