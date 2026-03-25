@@ -99,7 +99,8 @@ class HiGHSSolver(OptimizationSolver):
 
         h = highspy.Highs()
         h.setOptionValue("output_flag", False)
-        h.setOptionValue("solver", "ipm")
+        h.setOptionValue("solver", "simplex")
+        h.setOptionValue("simplex_strategy", 1)
 
         inf = highspy.kHighsInf
 
@@ -161,7 +162,11 @@ class HiGHSSolver(OptimizationSolver):
             else:
                 vs_vals = np.maximum(1.0 - unique_rows.dot(tempws), 0.0).A1
             col_value[:num_vs] = vs_vals
-            h.setSolution(list(col_value), [])
+
+            sol = highspy.HighsSolution()
+            sol.col_value = col_value.tolist()
+            sol.value_valid = True
+            h.setSolution(sol)
 
         h.run()
 
