@@ -52,38 +52,17 @@ class _RUGSKLEARN(_RUGBASE):
             class_weight=class_weight,
         )
 
-    def _get_rule(self, fit_tree: DecisionTreeClassifier, nodeid: int) -> Rule:
-        """
-        Constructs a rule from a given node in a decision tree.
-
-        Parameters
-        ----------
-        fit_tree : DecisionTreeClassifier
-            The fitted decision tree from which to extract the rule.
-        nodeid : int
-            The ID of the node from which the rule is to be extracted.
-
-        Returns
-        -------
-        Rule
-            An object representing the extracted rule.
-        """
-
-        # Initializing the rule to be returned
-        return_rule = Rule()
-
-        # If the first feature of the tree is -2, the rule is empty
+    @staticmethod
+    def _build_node_info(fit_tree: DecisionTreeClassifier) -> dict | None:
+        """Build node info dict once per tree for efficient rule extraction."""
         if fit_tree.tree_.feature[0] == -2:
-            return Rule()
+            return None
 
-        # Extracting information from the tree
         tree = fit_tree.tree_
         left = tree.children_left
         right = tree.children_right
-        threshold = tree.threshold
         missing_left = tree.missing_go_to_left
 
-        # Building dictionaries to hold node information
         node_info = {
             node_id: (parent, True, bool(missing_left[parent]))
             for parent, node_id in enumerate(left)
@@ -94,8 +73,36 @@ class _RUGSKLEARN(_RUGBASE):
                 for parent, node_id in enumerate(right)
             }
         )
+        return node_info
 
-        # Traversing up the tree to build the rule
+    def _get_rule(self, fit_tree: DecisionTreeClassifier, nodeid: int, node_info: dict = None) -> Rule:
+        """
+        Constructs a rule from a given node in a decision tree.
+
+        Parameters
+        ----------
+        fit_tree : DecisionTreeClassifier
+            The fitted decision tree from which to extract the rule.
+        nodeid : int
+            The ID of the node from which the rule is to be extracted.
+        node_info : dict, optional
+            Pre-built node info dict. If None, will be built on the fly.
+
+        Returns
+        -------
+        Rule
+            An object representing the extracted rule.
+        """
+        return_rule = Rule()
+
+        if node_info is None:
+            node_info = self._build_node_info(fit_tree)
+            if node_info is None:
+                return Rule()
+
+        tree = fit_tree.tree_
+        threshold = tree.threshold
+
         while nodeid != 0:
             parent, is_left, missing = node_info[nodeid]
 
@@ -148,6 +155,9 @@ class _RUGSKLEARN(_RUGBASE):
 
         no_improvement = True
 
+        # Build node info once per tree
+        node_info = self._build_node_info(fit_tree)
+
         # Pre-compute label vectors for all classes
         neg_val = -1 / (self.k_ - 1)
         label_vectors = np.full((self.k_, self.k_), neg_val)
@@ -165,7 +175,7 @@ class _RUGSKLEARN(_RUGBASE):
 
         # Iterate over unique leaf nodes
         for leafno in np.unique(y_rules):
-            temp_rule = self._get_rule(fit_tree, leafno)
+            temp_rule = self._get_rule(fit_tree, leafno, node_info)
 
             if has_temp_rules:
                 if temp_rule in self._temp_rules:

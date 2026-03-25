@@ -41,6 +41,7 @@ class HiGHSSolver(OptimizationSolver):
         """
         self.penalty = penalty
         self.use_sparse = use_sparse
+        self._h = None
         super().__init__()
 
     def __call__(
@@ -76,6 +77,15 @@ class HiGHSSolver(OptimizationSolver):
         ### LAZY IMPORT
         import highspy
 
+        if self._h is None:
+            self._h = highspy.Highs()
+
+        h = self._h
+        h.clear()
+        h.setOptionValue("output_flag", False)
+        h.setOptionValue("solver", "simplex")
+        h.setOptionValue("simplex_strategy", 1)
+
         a_hat = csr_matrix(
             (
                 coefficients.yvals,
@@ -84,23 +94,15 @@ class HiGHSSolver(OptimizationSolver):
             dtype=np.float64,
         ) * ((k - 1.0) / k)
 
-        if not self.use_sparse:
-            a_hat = a_hat.toarray()
+        n, m = a_hat.shape
 
         costs = np.array(coefficients.costs, copy=False)
 
         unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(
             a_hat, sample_weight
         )
-
-        n, m = a_hat.shape
         num_vs = unique_rows.shape[0]
         total_vars = num_vs + m
-
-        h = highspy.Highs()
-        h.setOptionValue("output_flag", False)
-        h.setOptionValue("solver", "simplex")
-        h.setOptionValue("simplex_strategy", 1)
 
         inf = highspy.kHighsInf
 

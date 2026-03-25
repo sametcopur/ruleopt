@@ -39,19 +39,45 @@ class OptimizationSolver(ABC):
         pass
 
     def group_contraints(self, a_hat: np.ndarray, sample_weight: np.ndarray):
-        a_hat_view = np.ascontiguousarray(a_hat).view(
-            np.dtype((np.void, a_hat.dtype.itemsize * a_hat.shape[1]))
-        )
+        from scipy.sparse import issparse, csr_matrix as _csr
 
-        # Find unique rows and inverse indices
-        unique_a_hat_view, inverse_indices = np.unique(a_hat_view, return_inverse=True)
+        n, m = a_hat.shape
 
-        # Recover the unique rows from the structured array
-        unique_rows = unique_a_hat_view.view(a_hat.dtype).reshape(-1, a_hat.shape[1])
+        # Convert to CSR for efficient row-wise non-zero access
+        if issparse(a_hat):
+            sp = a_hat.tocsr()
+        else:
+            sp = _csr(a_hat)
 
-        # Compute the adjusted sample weights
+        # Hash rows by their non-zero pattern + values
+        indptr = sp.indptr
+        indices = sp.indices
+        data = sp.data
+
+        # Build a hashable key per row using the sparse structure
+        row_keys = {}
+        inverse_indices = np.empty(n, dtype=np.intp)
+        unique_rows_list = []
+        next_id = 0
+
+        for i in range(n):
+            start, end = indptr[i], indptr[i + 1]
+            key = (
+                tuple(indices[start:end].tolist()),
+                tuple(data[start:end].tolist()),
+            )
+            if key in row_keys:
+                inverse_indices[i] = row_keys[key]
+            else:
+                row_keys[key] = next_id
+                inverse_indices[i] = next_id
+                unique_rows_list.append(i)
+                next_id += 1
+
+        unique_rows = a_hat[unique_rows_list] if not issparse(a_hat) else a_hat[unique_rows_list].toarray()
+
         adjusted_sample_weight = np.bincount(
-            inverse_indices.ravel(), weights=sample_weight
+            inverse_indices, weights=sample_weight
         )
 
         return unique_rows, adjusted_sample_weight, inverse_indices
