@@ -103,8 +103,6 @@ class RUGClassifier(_RUGBASE):
     # ── Tree fitting ──────────────────────────────────────────────
 
     def _fit_decision_tree(self, x, y, sample_weight):
-        import warnings
-
         dt = ObliqueTreeClassifier(
             random_state=int(self._rng.integers(np.iinfo(np.int16).max)),
             max_depth=self.max_depth if self.max_depth is not None else -1,
@@ -114,9 +112,11 @@ class RUGClassifier(_RUGBASE):
             use_oblique=False,
             categories=self.categories if self.categories is not None else [],
         )
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            return dt.fit(x, y, sample_weight=sample_weight)
+        # obliquetree divides sample_weight by min — zeros cause inf
+        if sample_weight is not None:
+            sample_weight = np.clip(sample_weight, 1e-10, None)
+
+        return dt.fit(x, y, sample_weight=sample_weight)
 
     # ── Rule extraction (obliquetree export_tree based) ───────────
 
