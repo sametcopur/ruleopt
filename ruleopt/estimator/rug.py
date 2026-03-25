@@ -112,10 +112,6 @@ class RUGClassifier(_RUGBASE):
             use_oblique=False,
             categories=self.categories if self.categories is not None else [],
         )
-        # obliquetree divides sample_weight by min — zeros cause inf
-        if sample_weight is not None:
-            sample_weight = np.clip(sample_weight, 1e-10, None)
-
         return dt.fit(x, y, sample_weight=sample_weight)
 
     # ── Rule extraction (obliquetree export_tree based) ───────────
