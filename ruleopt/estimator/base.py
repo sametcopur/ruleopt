@@ -229,10 +229,14 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
         self.rule_columns_ = ordered_columns
 
         # Iterate over the columns and fill the rules dictionary
+        # Cache node_info per tree to avoid rebuilding
+        node_info_cache = {}
         for i, col in enumerate(ordered_columns):
             treeno, leafno, label, sdist = self.rule_info_[col]
             fit_tree = self.decision_trees_[treeno]
-            rule = self._get_rule(fit_tree, leafno)
+            if treeno not in node_info_cache:
+                node_info_cache[treeno] = self._build_node_info(fit_tree)
+            rule = self._get_rule(fit_tree, leafno, node_info_cache[treeno])
             if len(rule) > 0:
                 rule.label = label
                 rule.weight = weights[col]
@@ -461,7 +465,8 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
 
             total_weights = np.sum(sum_class_weights_arr, axis=1)
             near_zero_total_weight = total_weights <= 1e-6
-            predictions = np.divide(sum_class_weights_arr, total_weights.reshape(-1, 1))
+            with np.errstate(divide="ignore", invalid="ignore"):
+                predictions = np.divide(sum_class_weights_arr, total_weights.reshape(-1, 1))
             predictions[near_zero_total_weight, :] = self.majority_probability_
 
             return predictions
