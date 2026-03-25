@@ -311,10 +311,10 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
         sum_class_weights_arr = np.zeros(shape=(x.shape[0], self.k_), dtype=np.float32)
 
         weights_matrix = rule_matrix * rule_weights
-        for rule_label in range(self.k_):
-            selected_rules_indexs = np.where(rule_labels == rule_label)[0]
+        class_indices = [np.where(rule_labels == label)[0] for label in range(self.k_)]
+        for rule_label, indices_for_label in enumerate(class_indices):
             sum_class_weights_arr[:, rule_label] = np.sum(
-                weights_matrix[:, selected_rules_indexs], axis=1
+                weights_matrix[:, indices_for_label], axis=1
             )
 
         # Return the array of class weights

@@ -148,29 +148,41 @@ class _RUGSKLEARN(_RUGBASE):
 
         no_improvement = True
 
+        # Pre-compute label vectors for all classes
+        neg_val = -1 / (self.k_ - 1)
+        label_vectors = np.full((self.k_, self.k_), neg_val)
+        np.fill_diagonal(label_vectors, 1.0)
+
+        # Accumulate arrays in lists, concatenate once at the end
+        rows_list = []
+        cols_list = []
+        yvals_list = []
+        costs_list = []
+
+        has_temp_rules = hasattr(self, "_temp_rules")
+        check_reduced_cost = (betas is not None) & (normalization_constant is not None)
+        k_ratio = (self.k_ - 1.0) / self.k_
+
         # Iterate over unique leaf nodes
         for leafno in np.unique(y_rules):
             temp_rule = self._get_rule(fit_tree, leafno)
 
-            if hasattr(self, "_temp_rules"):
+            if has_temp_rules:
                 if temp_rule in self._temp_rules:
                     continue
 
             covers = np.where(y_rules == leafno)[0]
-            leaf_y_vals = y[covers]  # y values of the samples in the leaf
+            leaf_y_vals = y[covers]
 
-            _, counts = np.unique(leaf_y_vals, return_counts=True)
+            counts = np.bincount(leaf_y_vals, minlength=self.k_)
+            counts = counts[counts > 0]
 
             # Identify the majority class in the leaf
-            label = preds[covers][0]
+            label = preds[covers[0]]
 
-            # Create a vector for this label
-            label_vector = np.full((self.k_,), -1 / (self.k_ - 1))
-            label_vector[label] = 1
+            # Calculate fill_ahat
+            fill_ahat = np.dot(vec_y[covers, :], label_vectors[label])
 
-            # Calculate fill_ahat, which will be used to update yvals in the coefficients matrix
-            fill_ahat = np.dot(vec_y[covers, :], label_vector)
-            
             cost = self._get_rule_cost(
                     temp_rule=temp_rule,
                     covers=covers,
@@ -178,42 +190,39 @@ class _RUGSKLEARN(_RUGBASE):
                     y=y,
                 )
 
-            if (betas is not None) & (normalization_constant is not None):
+            if check_reduced_cost:
                 red_cost = np.dot(
-                    np.multiply(((self.k_ - 1.0) / self.k_), fill_ahat),
-                    betas[
-                        covers
-                    ],  # (betas if sample_weight is None else betas * sample_weight),
+                    k_ratio * fill_ahat,
+                    betas[covers],
                 ) - (cost * self.solver.penalty * normalization_constant)
-
             else:
                 red_cost = float("inf")
 
             if red_cost > 0:
-                covers_fill = np.full((covers.shape[0],), fill_ahat, dtype=np.float32)
-                covers_col = np.full((covers.shape[0],), col, dtype=np.int32)
+                rows_list.append(covers)
+                cols_list.append(np.full(covers.shape[0], col, dtype=np.int32))
+                yvals_list.append(np.full(covers.shape[0], fill_ahat, dtype=np.float32))
+                costs_list.append(cost)
 
-
-                self.coefficients_.rows = np.concatenate(
-                    (self.coefficients_.rows, covers)
-                )
-                self.coefficients_.cols = np.concatenate(
-                    (self.coefficients_.cols, covers_col)
-                )
-                self.coefficients_.yvals = np.concatenate(
-                    (self.coefficients_.yvals, covers_fill)
-                )
-
-                # Append the cost to the costs in the coefficients matrix
-                self.coefficients_.costs = np.concatenate(
-                    (self.coefficients_.costs, [cost])
-                )
-
-                # Calculate the distribution of the samples in the leaf across the classes
                 sdist = counts
                 self.rule_info_[col] = (treeno, leafno, label, sdist)
                 col += 1
-                
+
                 no_improvement = False
-                
+
+        # Bulk concatenate once
+        if rows_list:
+            self.coefficients_.rows = np.concatenate(
+                [self.coefficients_.rows] + rows_list
+            )
+            self.coefficients_.cols = np.concatenate(
+                [self.coefficients_.cols] + cols_list
+            )
+            self.coefficients_.yvals = np.concatenate(
+                [self.coefficients_.yvals] + yvals_list
+            )
+            self.coefficients_.costs = np.concatenate(
+                [self.coefficients_.costs, np.array(costs_list, dtype=np.float64)]
+            )
+
         return no_improvement
