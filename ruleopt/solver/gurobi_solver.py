@@ -11,7 +11,10 @@ class GurobiSolver(OptimizationSolver):
     """
     A solver wrapper class for linear optimization using the Gurobi solver.
 
-    The solver supports both dense and sparse matrix representations.
+    Solves the dual LP directly:
+        max  1^T β
+        s.t. U^T β <= c
+             0 <= β <= s
     """
 
     def __new__(cls, *args, **kwargs):
@@ -54,71 +57,63 @@ class GurobiSolver(OptimizationSolver):
         *args,
         **kwargs,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Parameters
-        ----------
-        coefficients : object
-            An object containing the sparse matrix coefficients ('yvals', 'rows', 'cols'),
-            and costs associated with each rule ('costs').
-        k : float
-            A scaling factor for the coefficients.
-        ws0 : array-like, optional
-            Initial weights for the optimization process. If provided, should have the same
-            length as the number of rules. Otherwise, weights are initialized to ones.
-
-        Returns
-        -------
-        ws : numpy.ndarray
-            The optimized weights for each rule after the optimization process.
-        betas : numpy.ndarray
-            The betas values indicating constraint violations for the optimized solution.
-        """
         ### LAZY IMPORT
         from gurobipy import Model, GRB
 
+        scale = (k - 1.0) / k
         a_hat = csr_matrix(
             (
-                coefficients.yvals,
+                np.asarray(coefficients.yvals, dtype=np.float64) * scale,
                 (coefficients.rows, coefficients.cols),
             ),
             dtype=np.float64,
-        ) * ((k - 1.0) / k)
+        )
 
         n, m = a_hat.shape
-
         costs = np.array(coefficients.costs, copy=False)
 
-        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(a_hat, sample_weight)
+        unique_rows_sp, adjusted_sample_weight, inverse_indices = self.group_contraints(a_hat, sample_weight)
 
-        modprimal = Model("RUG Primal")
-        modprimal.setParam("OutputFlag", False)
-        modprimal.setParam("Method", 3)
-        # Variables
-        vs = modprimal.addMVar(shape=int(unique_rows.shape[0]), name="vs")
-        ws = modprimal.addMVar(shape=int(m), name="ws")
+        if not isinstance(unique_rows_sp, csr_matrix):
+            unique_rows_sp = csr_matrix(unique_rows_sp)
 
-        if ws0 is not None:
-            tempws = np.zeros(m)
-            tempws[: len(ws0)] = ws0
-            ws.setAttr("Start", tempws)
-            modprimal.update()
+        num_unique = unique_rows_sp.shape[0]
+        UT = unique_rows_sp.T.tocsr()
 
-        # Objective
-        modprimal.setObjective(
-            adjusted_sample_weight @ vs + (costs * self.penalty * normalization_constant) @ ws,
-            GRB.MINIMIZE,
+        # Dual LP: max 1^T β  s.t. U^T β <= c,  0 <= β <= s
+        moddual = Model("RUG Dual")
+        moddual.setParam("OutputFlag", False)
+        moddual.setParam("Method", 3)
+        moddual.setParam("Crossover", 0)
+        moddual.setParam("Presolve", 1)
+        moddual.setParam("BarConvTol", 1e-4)
+
+        # Variables: β (num_unique), bounded [0, s]
+        beta = moddual.addMVar(
+            shape=num_unique,
+            lb=0.0,
+            ub=adjusted_sample_weight.astype(np.float64),
+            name="beta",
         )
-        # Constraints
-        modprimal.addConstr(unique_rows @ ws + vs >= 1.0, name="a_hat Constraints")
 
-        modprimal.optimize()
+        # Objective: maximize 1^T β
+        moddual.setObjective(np.ones(num_unique) @ beta, GRB.MAXIMIZE)
 
-        duals_unique = np.array(modprimal.getAttr(GRB.Attr.Pi)[:n])
+        # Constraints: U^T β <= c
+        c_rhs = (costs * self.penalty * normalization_constant).astype(np.float64)
+        moddual.addConstr(UT @ beta <= c_rhs, name="dual_constraints")
+
+        moddual.optimize()
+
+        # β directly from solution
+        duals_unique = beta.X
+
+        # ws from dual of U^T β <= c (Pi)
+        ws_X = np.maximum(np.array(moddual.getAttr(GRB.Attr.Pi)[:m]), 0.0)
+        ws_X[ws_X < 1e-6] = 0.0
 
         betas = self.fill_betas(n, duals_unique, inverse_indices.ravel(), sample_weight, rng)
 
-        ws_X = ws.X
+        moddual.dispose()
 
-        modprimal.dispose()
-        
         return ws_X, betas

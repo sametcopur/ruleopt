@@ -283,7 +283,7 @@ class RUGClassifier(_RUGBASE):
                 break
 
             ws, betas = self.solver(
-                coefficients=self.coefficients_, k=self.k_, ws0=ws.copy(),
+                coefficients=self.coefficients_, k=self.k_,
                 normalization_constant=normalization_constant,
                 sample_weight=sample_weight, rng=self._rng,
             )

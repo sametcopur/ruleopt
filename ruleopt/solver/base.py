@@ -63,8 +63,8 @@ class OptimizationSolver(ABC):
         for i in range(n):
             start, end = indptr[i], indptr[i + 1]
             key = (
-                tuple(indices[start:end].tolist()),
-                tuple(data[start:end].tolist()),
+                indices[start:end].tobytes(),
+                data[start:end].tobytes(),
             )
             if key in row_keys:
                 inverse_indices[i] = row_keys[key]
@@ -74,7 +74,7 @@ class OptimizationSolver(ABC):
                 unique_rows_list.append(i)
                 next_id += 1
 
-        unique_rows = a_hat[unique_rows_list] if not issparse(a_hat) else a_hat[unique_rows_list].toarray()
+        unique_rows = a_hat[unique_rows_list]
 
         adjusted_sample_weight = np.bincount(
             inverse_indices, weights=sample_weight
