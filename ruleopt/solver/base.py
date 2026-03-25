@@ -16,7 +16,7 @@ class OptimizationSolver(ABC):
         super().__init__()
         self.penalty: float | int
         self.use_sparse: bool
-        self.solver_type: str | None
+
         self.lr: float | int | None
         self.constraint_cost: float | int | None
         self.weight_decay: float | int | None
@@ -78,23 +78,6 @@ class OptimizationSolver(ABC):
 
         if not isinstance(self.use_sparse, bool):
             raise TypeError(f"use_sparse must be True or False.")
-
-        if hasattr(self, "solver_type"):
-            valid_solvers = [
-                "CLP",
-                "PDLP",
-                "GLOP",
-                "GUROBI_LP",
-                "CPLEX_LP",
-                "XPRESS_LP",
-                "GLPK_LP",
-                "HiGHS",
-            ]
-            if (
-                not isinstance(self.solver_type, str)
-                or self.solver_type not in valid_solvers
-            ):
-                raise ValueError(f"solver_type must be one of {valid_solvers}.")
 
         if hasattr(self, "lr"):
             if not isinstance(self.lr, (float, int)) or self.lr <= 0:

@@ -14,7 +14,7 @@ from sklearn.datasets import load_iris
 from ruleopt import RUGClassifier
 from ruleopt.cost import Gini
 from ruleopt.explainer import Explainer
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 ```
 
 ## Step 2: Prepare the Data
@@ -33,7 +33,7 @@ Set up the `RUGClassifier` with specific parameters and fit it to the training d
 ```python
 # Define tree parameters, solver and rule_cost
 tree_parameters = {"max_depth": 3, "class_weight": "balanced"}
-solver = ORToolsSolver()
+solver = HiGHSSolver()
 rule_cost = Gini()
 
 # Initialize the RUGClassifier with specific parameters

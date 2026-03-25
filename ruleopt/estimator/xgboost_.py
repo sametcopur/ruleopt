@@ -8,7 +8,7 @@ from .base import _RUGBASE
 from ..aux_classes import Rule
 from ..rule_cost import Gini
 from ..utils import check_module_available, check_inputs
-from ..solver import ORToolsSolver
+from ..solver import HiGHSSolver
 
 
 XGBOOST_AVAILABLE = check_module_available("xgboost")
@@ -36,7 +36,7 @@ class RUXXGBClassifier(_RUGBASE):
         self,
         trained_ensemble,
         *,
-        solver=ORToolsSolver(),
+        solver=HiGHSSolver(),
         rule_cost=Gini(),
         class_weight: dict | str | None = None,
         threshold: float = 1.0e-6,
@@ -49,7 +49,7 @@ class RUXXGBClassifier(_RUGBASE):
             The trained XGBoost ensemble model from which rules will be extracted.
             The model should already be trained on the dataset.
 
-        solver : OptimizationSolver, default=ORToolsSolver()
+        solver : OptimizationSolver, default=HiGHSSolver()
             An instance of a derived class inherits from the 'Optimization Solver' base class.
             The solver is responsible for optimizing the rule set based on the cost function
             and constraints.

@@ -21,7 +21,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 from ruleopt import RUXClassifier
 from ruleopt.rule_cost import Gini
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 
 
 def main():
@@ -41,7 +41,7 @@ def main():
     rfc.fit(X_train, y_train)
 
     rule_cost = Gini()
-    solver = ORToolsSolver(penalty=3)
+    solver = HiGHSSolver(penalty=3)
     
     # Initialize the RUXClassifier with specific parameters
     rux = RUXClassifier(

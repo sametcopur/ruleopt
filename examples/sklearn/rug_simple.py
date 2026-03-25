@@ -15,7 +15,7 @@ from sklearn.datasets import load_iris
 
 from ruleopt import RUGClassifier
 from ruleopt.rule_cost import Gini
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
         X, y, test_size=0.2, random_state=random_state
     )
 
-    solver = ORToolsSolver()
+    solver = HiGHSSolver()
     rule_cost = Gini()
 
     # Initialize the RUGClassifier with specific parameters

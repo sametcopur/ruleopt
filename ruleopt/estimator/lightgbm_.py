@@ -6,7 +6,7 @@ from .base import _RUGBASE
 from ..aux_classes import Rule
 from ..rule_cost import Gini
 from ..utils import check_module_available, check_inputs
-from ..solver import ORToolsSolver
+from ..solver import HiGHSSolver
 
 LIGHTGBM_AVAILABLE = check_module_available("lightgbm")
 
@@ -33,7 +33,7 @@ class RUXLGBMClassifier(_RUGBASE):
         self,
         trained_ensemble,
         *,
-        solver=ORToolsSolver(),
+        solver=HiGHSSolver(),
         rule_cost=Gini(),
         class_weight: dict | str | None = None,
         threshold: float = 1.0e-6,
@@ -45,7 +45,7 @@ class RUXLGBMClassifier(_RUGBASE):
         trained_ensemble : lightgbm.LGBMClassifier or lightgbm.Booster
             The trained LightGBM ensemble model from which the rules will be extracted.
 
-        solver : OptimizationSolver, default=ORToolsSolver()
+        solver : OptimizationSolver, default=HiGHSSolver()
             An instance of a derived class inherits from the 'Optimization Solver' base class.
             The solver is responsible for optimizing the rule set based on the cost function
             and constraints.

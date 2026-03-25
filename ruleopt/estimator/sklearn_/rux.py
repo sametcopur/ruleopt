@@ -8,7 +8,7 @@ from numpy.typing import ArrayLike
 from .base_sklearn import _RUGSKLEARN
 from ...rule_cost import Gini
 from ...utils import check_inputs
-from ...solver import ORToolsSolver
+from ...solver import HiGHSSolver
 
 
 class RUXClassifier(_RUGSKLEARN):
@@ -24,7 +24,7 @@ class RUXClassifier(_RUGSKLEARN):
         self,
         trained_ensemble,
         *,
-        solver=ORToolsSolver(),
+        solver=HiGHSSolver(),
         rule_cost=Gini(),
         class_weight: dict | str | None = None,
         threshold: float = 1.0e-6,
@@ -37,7 +37,7 @@ class RUXClassifier(_RUGSKLEARN):
             The trained scikit-learn ensemble model from which the rules will be
             extracted.
 
-        solver : OptimizationSolver, default=ORToolsSolver()
+        solver : OptimizationSolver, default=HiGHSSolver()
             An instance of a derived class inherits from the 'Optimization Solver' base class.
             The solver is responsible for optimizing the rule set based on the cost function
             and constraints.

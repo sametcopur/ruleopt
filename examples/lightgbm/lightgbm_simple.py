@@ -15,7 +15,7 @@ from sklearn.datasets import load_iris
 from sklearn.metrics import accuracy_score
 
 from ruleopt import RUXLGBMClassifier
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
 
     # Initialize a RUXLGBMClassifier with the trained LightGBM classifier
     # Use a mixed rule cost with weight 0.5 to balance simplicity and accuracy
-    solver = ORToolsSolver()
+    solver = HiGHSSolver()
     rux = RUXLGBMClassifier(
         lgb_classifier,
         solver=solver,

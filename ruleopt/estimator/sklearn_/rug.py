@@ -7,7 +7,7 @@ from sklearn.tree import DecisionTreeClassifier
 from .base_sklearn import _RUGSKLEARN
 from ...rule_cost import Gini
 from ...utils import check_inputs
-from ...solver import ORToolsSolver
+from ...solver import HiGHSSolver
 
 
 class RUGClassifier(_RUGSKLEARN):
@@ -18,7 +18,7 @@ class RUGClassifier(_RUGSKLEARN):
 
     def __init__(
         self,
-        solver=ORToolsSolver(),
+        solver=HiGHSSolver(),
         rule_cost=Gini(),
         max_rmp_calls=10,
         threshold: float = 1.0e-6,
@@ -39,7 +39,7 @@ class RUGClassifier(_RUGSKLEARN):
         """
         Parameters
         ----------
-        solver : OptimizationSolver, default=ORToolsSolver()
+        solver : OptimizationSolver, default=HiGHSSolver()
             An instance of a derived class inherits from the 'Optimization Solver' base class.
             The solver is responsible for optimizing the rule set based on the cost function
             and constraints.

@@ -14,7 +14,7 @@ Here are a few highlights of `ruleopt`:
 - **Efficient Rule Generation and Extraction**: Leverages linear programming for scalable rule generation (stand-alone machine learning method) and rule extraction from trained random forest and boosting models.
 - **Interpretability**: Prioritizes model transparency by assigning costs to rules in order to achieve a desirable balance with accuracy.
 - **Integration with Machine Learning Libraries**: Facilitates smooth integration with well-known Python libraries `scikit-learn`, `LightGBM`, and `XGBoost`, and existing machine learning pipelines.
-- **Extensive Solver Support**: Supports a wide array of solvers, including _Gurobi_, _CPLEX_ and _OR-Tools_.
+- **Extensive Solver Support**: Supports a wide array of solvers, including _HiGHS_, _Gurobi_ and _CPLEX_.
 
 
 ### Installation 
@@ -34,7 +34,7 @@ from sklearn.datasets import load_iris
 
 from ruleopt import RUGClassifier
 from ruleopt.rule_cost import Gini
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 
 # Set a random state for reproducibility
 random_state = 42
@@ -50,7 +50,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 # Define tree parameters
 tree_parameters = {"max_depth": 3, "class_weight": "balanced"}
 
-solver = ORToolsSolver()
+solver = HiGHSSolver()
 rule_cost = Gini()
 
 # Initialize the RUGClassifier with specific parameters

@@ -24,7 +24,7 @@ Let's dive in and see `ruleopt` in action. Here's a simple example to get you st
 ```python
 from ruleopt import RUGClassifier
 from ruleopt.cost import Gini
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 ```
 1.  **Load Your Data**: Load your dataset. `ruleopt` works with data in `NumPy` arrays, `Pandas` DataFrames, and other common formats.
 
@@ -36,7 +36,7 @@ X_train, X_test, y_train, y_test = load_data(...)
 ```python
 # Define scikit-learn tree parameters in a dict, solver and rule_cost
 tree_parameters = {"max_depth": 3, "class_weight": "balanced"}
-solver = ORToolsSolver()
+solver = HiGHSSolver()
 rule_cost = Gini()
 random_state = 42
 
