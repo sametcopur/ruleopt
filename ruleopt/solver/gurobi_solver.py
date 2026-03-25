@@ -84,14 +84,11 @@ class GurobiSolver(OptimizationSolver):
             dtype=np.float64,
         ) * ((k - 1.0) / k)
 
-        if not self.use_sparse:
-            a_hat = a_hat.toarray()
+        n, m = a_hat.shape
 
         costs = np.array(coefficients.costs, copy=False)
-        
-        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(a_hat, sample_weight)
 
-        n, m = a_hat.shape
+        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(a_hat, sample_weight)
 
         modprimal = Model("RUG Primal")
         modprimal.setParam("OutputFlag", False)

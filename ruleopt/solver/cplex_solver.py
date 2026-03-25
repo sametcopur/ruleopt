@@ -83,12 +83,10 @@ class CPLEXSolver(OptimizationSolver):
             dtype=np.float64,
         ) * ((k - 1.0) / k)
 
-        if not self.use_sparse:
-            a_hat = a_hat.toarray()
+        n, m = a_hat.shape
 
         costs = np.array(coefficients.costs, copy=False)
 
-        n, m = a_hat.shape
         # Primal Model
         modprimal = Model("RUXG Primal")
 
