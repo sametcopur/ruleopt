@@ -95,6 +95,7 @@ class GurobiSolver(OptimizationSolver):
 
         modprimal = Model("RUG Primal")
         modprimal.setParam("OutputFlag", False)
+        modprimal.setParam("Method", 3)
         # Variables
         vs = modprimal.addMVar(shape=int(unique_rows.shape[0]), name="vs")
         ws = modprimal.addMVar(shape=int(m), name="ws")
@@ -118,5 +119,9 @@ class GurobiSolver(OptimizationSolver):
         duals_unique = np.array(modprimal.getAttr(GRB.Attr.Pi)[:n])
 
         betas = self.fill_betas(n, duals_unique, inverse_indices.ravel(), sample_weight, rng)
+
+        ws_X = ws.X
+
+        modprimal.dispose()
         
-        return ws.X, betas
+        return ws_X, betas
