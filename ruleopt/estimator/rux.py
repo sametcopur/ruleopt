@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble._forest import ForestClassifier
-from sklearn.ensemble import GradientBoostingClassifier
 from numpy.typing import ArrayLike
 
 from .base import _RUGBASE
@@ -21,6 +20,31 @@ class RUXClassifier(_RUGBASE):
     and Extra-Trees Classifiers.
     """
 
+    @staticmethod
+    def _validate_trained_ensemble(trained_ensemble) -> None:
+        estimators = getattr(trained_ensemble, "estimators_", None)
+        if estimators is None:
+            raise TypeError(
+                "trained_ensemble must be a fitted sklearn-style tree ensemble "
+                "with an 'estimators_' attribute, such as "
+                "GradientBoostingClassifier, RandomForestClassifier, or "
+                "ExtraTreesClassifier."
+            )
+
+        if len(estimators) == 0:
+            raise TypeError("trained_ensemble.estimators_ must not be empty.")
+
+        first_estimator = estimators[0]
+        if isinstance(first_estimator, np.ndarray):
+            if first_estimator.size == 0:
+                raise TypeError("trained_ensemble.estimators_ must not be empty.")
+            first_estimator = first_estimator.flat[0]
+
+        if not hasattr(first_estimator, "tree_"):
+            raise TypeError(
+                "trained_ensemble.estimators_ must contain fitted decision trees."
+            )
+
     def __init__(
         self,
         trained_ensemble,
@@ -31,13 +55,7 @@ class RUXClassifier(_RUGBASE):
         threshold: float = 1.0e-6,
         random_state: int | None = None,
     ):
-        if not isinstance(trained_ensemble, (GradientBoostingClassifier, ForestClassifier)):
-            raise TypeError(
-                "trained_ensemble must be an instance of "
-                "sklearn.ensemble.GradientBoostingClassifier, "
-                "sklearn.ensemble.RandomForestClassifier, "
-                "or sklearn.ensemble.ExtraTreesClassifier."
-            )
+        self._validate_trained_ensemble(trained_ensemble)
 
         self.trained_ensemble = trained_ensemble
         super().__init__(
@@ -51,7 +69,7 @@ class RUXClassifier(_RUGBASE):
     # ── Rule extraction (sklearn tree_ based) ─────────────────────
 
     @staticmethod
-    def _build_node_info(fit_tree: DecisionTreeClassifier) -> dict | None:
+    def _build_node_info(fit_tree: Any) -> dict | None:
         if fit_tree.tree_.feature[0] == -2:
             return None
 
@@ -70,7 +88,7 @@ class RUXClassifier(_RUGBASE):
         })
         return node_info
 
-    def _get_rule(self, fit_tree: DecisionTreeClassifier, nodeid: int, node_info: dict = None) -> Rule:
+    def _get_rule(self, fit_tree: Any, nodeid: int, node_info: dict = None) -> Rule:
         return_rule = Rule()
 
         if node_info is None:
