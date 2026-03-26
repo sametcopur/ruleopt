@@ -155,7 +155,7 @@ class RUXClassifier(_RUGBASE):
                 cols_list.append(np.full(covers.shape[0], col, dtype=np.int32))
                 yvals_list.append(np.full(covers.shape[0], fill_ahat, dtype=np.float32))
                 costs_list.append(cost)
-                self.rule_info_[col] = (treeno, leafno, label, counts)
+                self.rule_info_[col] = (treeno, leafno, label, counts_full)
                 col += 1
                 no_improvement = False
 

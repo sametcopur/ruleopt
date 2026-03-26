@@ -230,8 +230,8 @@ class RUGClassifier(_RUGBASE):
                 continue
 
             covers = np.where(y_rules == leafno)[0]
-            counts = np.bincount(y[covers], minlength=self.k_)
-            counts = counts[counts > 0]
+            full_counts = np.bincount(y[covers], minlength=self.k_)
+            counts = full_counts[full_counts > 0]
             label = preds[covers[0]]
 
             fill_ahat = np.dot(vec_y[covers, :], self._label_vectors[label])
@@ -250,7 +250,7 @@ class RUGClassifier(_RUGBASE):
                 cols_list.append(np.full(covers.shape[0], col, dtype=np.intp))
                 yvals_list.append(np.asarray(fill_ahat, dtype=np.float64))
                 costs_list.append(cost)
-                self.rule_info_[col] = (treeno, leafno, label, counts)
+                self.rule_info_[col] = (treeno, leafno, label, full_counts)
                 self._temp_rules_set.add(key)
                 col += 1
                 no_improvement = False

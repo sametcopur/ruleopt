@@ -284,6 +284,7 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
         threshold: float = 0,
         *,
         predict_info=False,
+        soft_proba=False,
     ) -> np.ndarray:
         """
         Calculates the base class weights for each instance based on selected rules.
@@ -347,8 +348,17 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
             rule_matrix[:, rule_index] = rule.check_rule(x)
 
         weights_matrix = rule_matrix * rule_weights
-        label_indicator = np.zeros((len(rule_labels), self.k_), dtype=np.float32)
-        label_indicator[np.arange(len(rule_labels)), rule_labels] = 1.0
+        label_indicator = np.zeros((len(selected_rules), self.k_), dtype=np.float32)
+        if soft_proba:
+            for j, rule in enumerate(selected_rules):
+                sdist = np.asarray(rule.sdist, dtype=np.float32)
+                total = sdist.sum()
+                if total > 0 and len(sdist) == self.k_:
+                    label_indicator[j] = sdist / total
+                else:
+                    label_indicator[j, rule.label] = 1.0
+        else:
+            label_indicator[np.arange(len(rule_labels)), rule_labels] = 1.0
         sum_class_weights_arr = weights_matrix @ label_indicator
 
         # Return the array of class weights
@@ -490,7 +500,8 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
 
         else:
             sum_class_weights_arr = self._predict_base(
-                x, indices, threshold, predict_info=predict_info
+                x, indices, threshold, predict_info=predict_info,
+                soft_proba=True,
             )
 
             total_weights = np.sum(sum_class_weights_arr, axis=1)

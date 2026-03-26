@@ -213,11 +213,12 @@ class RUXLGBMClassifier(_RUGBASE):
             covers = np.where(y_rules == leafno)[0]
             leaf_y_vals = y[covers]  # y values of the samples in the leaf
 
-            # Get unique labels in the leaf and their counts
-            unique_labels, counts = np.unique(leaf_y_vals, return_counts=True)
+            # Get full class distribution in the leaf
+            counts_full = np.bincount(leaf_y_vals, minlength=self.k_)
+            counts = counts_full[counts_full > 0]
 
             # Identify the majority class in the leaf
-            label = unique_labels[np.argmax(counts)]
+            label = int(np.argmax(counts_full))
 
             # Create a vector for this label
             label_vector = np.full((self.k_,), -1 / (self.k_ - 1))
@@ -247,9 +248,7 @@ class RUXLGBMClassifier(_RUGBASE):
                 (self.coefficients_.costs, [cost])
             )
 
-            # Calculate the distribution of the samples in the leaf across the classess
-            sdist = counts
-            self.rule_info_[col] = (treeno, leafno, label, sdist)
+            self.rule_info_[col] = (treeno, leafno, label, counts_full)
             col += 1
 
     def _get_matrices(self, x: np.ndarray, y: np.ndarray, vec_y: np.ndarray):
