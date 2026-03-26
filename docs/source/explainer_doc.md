@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
 
 from ruleopt import RUGClassifier
-from ruleopt.cost import Gini
+from ruleopt.rule_cost import Gini
 from ruleopt.explainer import Explainer
 from ruleopt.solver import HiGHSSolver
 ```

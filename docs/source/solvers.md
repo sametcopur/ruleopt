@@ -1,17 +1,30 @@
 # Supported Solvers
 
-`ruleopt` is designed to work with a variety of solvers. Here's a detailed overview of the solvers that `ruleopt` supports.
+`ruleopt` currently ships with solver backends for `HiGHS`, `Gurobi`, and `CPLEX`.
 
-## Gurobi and CPLEX
+## HiGHS
 
-**ruleopt** also offers integration with high-performance, _proprietary_ solvers like `GurobiSolver` and `CPLEXSolver`. These solvers work with their respective Python interfaces, `gurobipy` for **Gurobi** and `docplex` for **CPLEX**. It is important to note that both solvers require a valid license to use.
+`HiGHSSolver` is the default open-source solver in `ruleopt`.
 
-## OR-Tools
+Current defaults are tuned internally for faster large-sample RUG fits.
+The current internal configuration uses:
 
-In addition to the above, `ruleopt` integrates with Google's **OR-Tools**, offering access to a comprehensive suite of solvers. _For users primarily interested in free solvers, we recommend starting with the default configuration provided by OR-Tools for simplicity and ease of use._
+```python
+solver = "ipm"
+run_crossover = "off"
+presolve = "off"
+threads = 0
+ipm_optimality_tolerance = 1e-4
+```
 
-For the list of supported solvers through please see **OR-Tools** [webpage](https://developers.google.com/optimization).
+These settings usually reduce fit time, but they can change the selected rules and
+the final model quality slightly compared with stricter solver settings.
 
-### Note
+## Gurobi
 
-While **OR-Tools** supports a broad range of solvers, including **Gurobi** and **CPLEX**, setting up some solvers, especially the commercial ones or those disabled by default (**GLPK**, **HiGHS**), requires compiling OR-Tools from source. This process can be more complex but offers flexibility for users who need these specific solvers.
+`GurobiSolver` uses the `gurobipy` interface and requires a valid Gurobi license.
+
+## CPLEX
+
+`CPLEXSolver` uses the `docplex` interface and requires a valid CPLEX installation
+and license.
