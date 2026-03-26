@@ -158,7 +158,7 @@ cdef class Rule:
         self.n_oblique_clauses += 1
 
     cdef bint _check_oblique_clause_nogil(self, float[:] X, int idx) noexcept nogil:
-        cdef ObliqueClauseStruct oc = self.oblique_clauses[idx]
+        cdef ObliqueClauseStruct* oc = &self.oblique_clauses[idx]
         cdef double dot = 0.0
         cdef float val
         cdef int i
@@ -177,29 +177,56 @@ cdef class Rule:
     # ── Rule evaluation ───────────────────────────────────────────
 
     cdef char[:] _check_rule_nogil(self, float[:,:] X) noexcept:
-        cdef int i, j
+        cdef int i, j, k
         cdef bint passed
         cdef char[:] result_data = np.ones(X.shape[0], dtype=np.int8)
+        cdef int n_samples = X.shape[0]
+        cdef int n_clauses = self.n_clauses
+        cdef int n_oblique = self.n_oblique_clauses
+        cdef ClauseStruct* clauses = self.clauses
+        cdef ObliqueClauseStruct* oblique = self.oblique_clauses
+        cdef float val
+        cdef double dot
 
         with nogil:
-            for i in range(X.shape[0]):
+            for i in range(n_samples):
                 passed = 1
-                for j in range(self.n_clauses):
-                    if not self._check_clause_nogil(X[i], j):
-                        result_data[i] = 0
+                for j in range(n_clauses):
+                    val = X[i, clauses[j].feature]
+                    if val != val:
+                        if not clauses[j].na:
+                            passed = 0
+                            break
+                    elif not (clauses[j].lb < val <= clauses[j].ub):
                         passed = 0
                         break
-                if passed:
-                    for j in range(self.n_oblique_clauses):
-                        if not self._check_oblique_clause_nogil(X[i], j):
-                            result_data[i] = 0
+                if passed and n_oblique > 0:
+                    for j in range(n_oblique):
+                        dot = 0.0
+                        for k in range(oblique[j].n_terms):
+                            val = X[i, oblique[j].features[k]]
+                            if val != val:
+                                passed = 0
+                                break
+                            dot = dot + oblique[j].weights[k] * val
+                        if not passed:
                             break
+                        if oblique[j].is_left:
+                            if not (dot < oblique[j].threshold):
+                                passed = 0
+                                break
+                        else:
+                            if not (dot >= oblique[j].threshold):
+                                passed = 0
+                                break
+                if not passed:
+                    result_data[i] = 0
 
         return result_data
 
     cpdef cnp.ndarray[cnp.uint8_t, ndim=1] check_rule(self, float[:, :] X):
         cdef char[:] result = self._check_rule_nogil(X)
-        return np.asarray(result, dtype=np.uint8)
+        return np.asarray(result).view(np.uint8)
 
     # ── Display ───────────────────────────────────────────────────
 
