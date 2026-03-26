@@ -34,7 +34,12 @@ extensions = [
 
 autodoc_typehints = "none"
 
-autodoc_mock_imports = ["ruleopt.aux_classes.aux_classes", "ruleopt.solver.solver_utils"]
+autodoc_mock_imports = [
+    "ruleopt.aux_classes.aux_classes",
+    "ruleopt.solver.solver_utils",
+    "obliquetree",
+    "obliquetree.utils",
+]
 
 python_use_unqualified_type_names = True
 
@@ -46,7 +51,7 @@ exclude_patterns = []
 
 
 html_theme = "furo"
-html_static_path = ["_static"]
+html_static_path = ["_static"] if os.path.isdir("_static") else []
 
 def setup(app: Sphinx):
     print("setup")

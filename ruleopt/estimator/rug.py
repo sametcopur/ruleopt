@@ -3,14 +3,21 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike
 from sklearn.utils.class_weight import compute_sample_weight
-from obliquetree import Classifier as ObliqueTreeClassifier
-from obliquetree.utils import export_tree
 
 from .base import _RUGBASE
 from ..aux_classes import Rule
 from ..rule_cost import Gini
-from ..utils import check_inputs
+from ..utils import check_inputs, check_module_available
 from ..solver import HiGHSSolver
+
+OBLIQUETREE_AVAILABLE = check_module_available("obliquetree")
+
+if OBLIQUETREE_AVAILABLE:
+    from obliquetree import Classifier as ObliqueTreeClassifier
+    from obliquetree.utils import export_tree
+else:
+    ObliqueTreeClassifier = None
+    export_tree = None
 
 
 class RUGClassifier(_RUGBASE):
@@ -115,9 +122,18 @@ class RUGClassifier(_RUGBASE):
         super()._cleanup()
         self._temp_rules_set = set()
 
+    @staticmethod
+    def _require_obliquetree() -> None:
+        if not OBLIQUETREE_AVAILABLE:
+            raise ImportError(
+                "RUGClassifier requires the optional dependency 'obliquetree'. "
+                "Install it with 'pip install obliquetree'."
+            )
+
     # ── Tree fitting ──────────────────────────────────────────────
 
     def _fit_decision_tree(self, x, y, sample_weight):
+        self._require_obliquetree()
         dt = ObliqueTreeClassifier(
             random_state=int(self._rng.integers(np.iinfo(np.int16).max)),
             max_depth=self.max_depth if self.max_depth is not None else -1,
@@ -135,6 +151,7 @@ class RUGClassifier(_RUGBASE):
     @staticmethod
     def _build_node_info(fit_tree) -> dict | None:
         """Flatten export_tree nested dict to node_info via pre-order traversal."""
+        RUGClassifier._require_obliquetree()
         tree_dict = export_tree(fit_tree)["tree"]
 
         nodes = []
