@@ -12,12 +12,15 @@ class HiGHSSolver(OptimizationSolver):
     A solver wrapper class for linear optimization using the HiGHS solver.
 
     Solves the dual LP directly:
-        max  1^T β
-        s.t. U^T β <= c
-             0 <= β <= s
+
+    .. code-block:: text
+
+        max  1^T beta
+        s.t. U^T beta <= c
+             0 <= beta <= s
 
     This avoids the identity block and v variables entirely.
-    β gives the dual values directly, ws is read from row_dual.
+    beta gives the dual values directly, ws is read from row_dual.
     """
 
     def __new__(cls, *args, **kwargs):

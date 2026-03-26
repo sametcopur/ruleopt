@@ -12,9 +12,12 @@ class CPLEXSolver(OptimizationSolver):
     A solver wrapper class for linear optimization using the CPLEX solver.
 
     Solves the dual LP directly:
-        max  1^T β
-        s.t. U^T β <= c
-             0 <= β <= s
+
+    .. code-block:: text
+
+        max  1^T beta
+        s.t. U^T beta <= c
+             0 <= beta <= s
     """
 
     def __new__(cls, *args, **kwargs):
