@@ -16,7 +16,7 @@ sys.path.insert(0, project_path)
 
 
 project = "ruleopt"
-copyright = "2025, Samet Çopur"
+copyright = "2026, Samet Çopur"
 author = "Samet Çopur"
 
 version = '1.2.0'
@@ -29,7 +29,6 @@ extensions = [
     "sphinx.ext.napoleon",
     "numpydoc",
     "sphinx.ext.mathjax",
-    "furo",
     "myst_parser",
 ]
 

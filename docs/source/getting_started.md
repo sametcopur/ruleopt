@@ -13,7 +13,7 @@ To get started with `ruleopt`, you'll first need to install the package. You can
 ```bash
 pip install ruleopt
 ```
-Ensure you have Python 3.9 or later installed on your machine.
+Ensure you have Python 3.10 or later installed on your machine.
 
 ## Quick Start Guide
 
@@ -63,6 +63,22 @@ Congratulations on running your first model with `ruleopt`! To dive deeper into 
 -   **API Reference**: Get detailed information on every function, class, and method provided by `ruleopt` in the API Reference.
 
 ## Important Features
+
+### Oblique Splits
+
+`RUGClassifier` supports oblique (multi-feature) splits via the `use_oblique` and `n_pair` parameters. Oblique splits use linear combinations of features (e.g., `0.73*petal_length + -1.00*petal_width < 0.15`) instead of single-feature thresholds.
+
+```python
+clf = RUGClassifier(
+    use_oblique=True,
+    n_pair=2,       # number of features per split (2 recommended for interpretability)
+    max_depth=4,
+    random_state=42,
+)
+clf.fit(X_train, y_train)
+```
+
+Setting `n_pair=2` is recommended for interpretability, as each oblique clause involves only two features. Higher values increase model capacity but make individual rules harder to interpret.
 
 ### Handling Missing Values
 
