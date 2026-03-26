@@ -1,7 +1,6 @@
 from __future__ import annotations
-import re
+import json
 import numpy as np
-import pandas as pd
 from numpy.typing import ArrayLike
 
 from .base import _RUGBASE
@@ -95,14 +94,47 @@ class RUXXGBClassifier(_RUGBASE):
             class_weight=class_weight,
         )
 
-    def _get_rule(self, fit_tree: pd.DataFrame, leaf_index: int) -> Rule:
+    @staticmethod
+    def _parse_tree_json(tree_dict: dict) -> dict:
+        """Flatten a JSON tree dict into a node lookup: {nodeid: node_info}."""
+        nodes = {}
+        parent_map = {}
+
+        def traverse(node, parent_id=None, is_left=None):
+            nid = node["nodeid"]
+            info = {"nodeid": nid}
+
+            if "leaf" in node:
+                info["is_leaf"] = True
+            else:
+                info["is_leaf"] = False
+                info["feature"] = int(node["split"].lstrip("f"))
+                info["threshold"] = float(node["split_condition"])
+                info["yes"] = node["yes"]
+                info["no"] = node["no"]
+                info["missing"] = node.get("missing", node["no"])
+
+            nodes[nid] = info
+
+            if parent_id is not None:
+                parent_map[nid] = (parent_id, is_left)
+
+            if "children" in node:
+                for child in node["children"]:
+                    child_is_left = (child["nodeid"] == node["yes"])
+                    traverse(child, nid, child_is_left)
+
+        traverse(tree_dict)
+        return nodes, parent_map
+
+    def _get_rule(self, fit_tree: tuple, leaf_index: int) -> Rule:
         """
         Extracts a decision rule leading to a specified leaf node from an XGBoost tree.
 
         Parameters
         ----------
-        fit_tree : pd.DataFrame
-            The decision trees represented as a DataFrame extracted from the trained XGBoost model.
+        fit_tree : tuple
+            A (nodes, parent_map) tuple from _parse_tree_json.
         leaf_index : int
             The ID of the leaf node for which to construct the decision rule.
 
@@ -112,41 +144,27 @@ class RUXXGBClassifier(_RUGBASE):
             An object representing the decision rule leading to the specified leaf node,
             composed of clauses that define the decision path.
         """
-        # Initialize the rule
         return_rule = Rule()
+        nodes, parent_map = fit_tree
 
-        if fit_tree.shape[0] <= 1:
+        if len(nodes) <= 1:
             return return_rule
 
-        while True:
-            # Find the parent node of the current leaf
-            parent = fit_tree.loc[
-                np.any(fit_tree.loc[:, ["Yes", "No"]] == leaf_index, axis=1), "Node"
-            ].values[0]
+        current = leaf_index
+        while current in parent_map:
+            parent_id, is_left = parent_map[current]
+            parent = nodes[parent_id]
 
-            # Extract information about the decision at the parent node
-            feature = int(fit_tree.loc[fit_tree.Node == parent, "Feature"].values[0])
-
-            threshold = fit_tree.loc[fit_tree.Node == parent, "Split"].values[0]
-            is_left = (
-                fit_tree.loc[fit_tree.Node == parent, "Yes"].values[0] == leaf_index
-            )
-            missing = (
-                fit_tree.loc[fit_tree.Node == parent, "Missing"].values[0] == leaf_index
-            )
+            feature = parent["feature"]
+            threshold = parent["threshold"]
+            missing = (parent["missing"] == current)
 
             ub = threshold if is_left else np.inf
             lb = -np.inf if is_left else threshold
-            na = missing
 
-            return_rule.add_clause(feature, ub, lb, na)
+            return_rule.add_clause(feature, ub, lb, missing)
 
-            # If we reached the root of the tree, break the loop
-            if parent == 0:
-                break
-
-            # Move up the tree
-            leaf_index = parent
+            current = parent_id
 
         return return_rule
 
@@ -154,7 +172,7 @@ class RUXXGBClassifier(_RUGBASE):
         self,
         y: np.ndarray,
         vec_y: np.ndarray,
-        fit_tree: pd.DataFrame,
+        fit_tree: tuple,
         treeno: int,
         y_rules: np.ndarray,
     ):
@@ -167,45 +185,35 @@ class RUXXGBClassifier(_RUGBASE):
             The target vector of the training data.
         vec_y : np.ndarray
             The preprocessed target vector, suitable for the optimization problem.
-        fit_tree : pd.DataFrame
-            A single decision tree's structure from XGBoost, represented as a DataFrame.
+        fit_tree : tuple
+            A (nodes, parent_map) tuple from _parse_tree_json.
         treeno : int
             The index of the current tree within the ensemble.
         y_rules : np.ndarray
             The array of leaf indices for each sample in the training data, determined
             by the current tree.
         """
-        # If the coefficients matrix is empty, start from the first column
         if self.coefficients_.cols.shape[0] == 0:
             col = 0
         else:
-            # Otherwise, start from the next available column
             col = np.max(self.coefficients_.cols) + 1
 
-        # Get the leaf node for each sample in x
         y_rules = y_rules[:, treeno]
 
-        # Iterate over unique leaf nodes
         for leafno in np.unique(y_rules):
-            # Get the samples in the leaf
             covers = np.where(y_rules == leafno)[0]
-            leaf_y_vals = y[covers]  # y values of the samples in the leaf
+            leaf_y_vals = y[covers]
 
-            # Get full class distribution in the leaf
             counts_full = np.bincount(leaf_y_vals, minlength=self.k_)
             counts = counts_full[counts_full > 0]
 
-            # Identify the majority class in the leaf
             label = int(np.argmax(counts_full))
 
-            # Create a vector for this label
             label_vector = np.full((self.k_,), -1 / (self.k_ - 1))
             label_vector[label] = 1
 
-            # Calculate fill_ahat, which will be used to update yvals in the coefficients matrix
             fill_ahat = np.dot(vec_y[covers, :], label_vector)
 
-            # Update the coefficients matrix with the new information
             self.coefficients_.rows = np.concatenate((self.coefficients_.rows, covers))
             self.coefficients_.cols = np.concatenate(
                 (self.coefficients_.cols, [col] * covers.shape[0])
@@ -221,12 +229,10 @@ class RUXXGBClassifier(_RUGBASE):
                 y=y,
             )
 
-            # Append the cost to the costs in the coefficients matrix
             self.coefficients_.costs = np.concatenate(
                 (self.coefficients_.costs, [cost])
             )
 
-            # Calculate the distribution of the samples in the leaf across the classes
             self.rule_info_[col] = (treeno, leafno, label, counts_full)
             col += 1
 
@@ -271,25 +277,13 @@ class RUXXGBClassifier(_RUGBASE):
 
         sample_weight = self._get_sample_weight(sample_weight, y)
 
-        # If the model has been fitted before, clean it up
         if self._is_fitted:
             self._cleanup()
 
-        # Fills the fitted decision trees.
-        out = self.trained_ensemble.get_booster().trees_to_dataframe()
-        pattern = re.compile(r"-(\d+)")
-        columns = ["Yes", "No", "Missing"]
-        out[columns] = out[columns].map(
-            lambda x: (
-                int(pattern.search(x).group(1))
-                if pd.notna(x) and pattern.search(x)
-                else None
-            )
-        )
-        out.Feature = out.Feature.str.lstrip("f")
-        self.decision_trees_ = {
-            treeno: out.loc[out.Tree == treeno] for treeno in out.Tree.unique()
-        }
+        dump = self.trained_ensemble.get_booster().get_dump(dump_format="json")
+        for treeno, tree_json in enumerate(dump):
+            tree_dict = json.loads(tree_json)
+            self.decision_trees_[treeno] = self._parse_tree_json(tree_dict)
 
         self._get_class_infos(y)
         vec_y = self._preprocess(y)
