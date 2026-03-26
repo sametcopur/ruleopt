@@ -98,7 +98,11 @@ class RUGClassifier(_RUGBASE):
         self.ccp_alpha = ccp_alpha
         self.categories = categories
 
-        self._temp_rules = []
+        self._temp_rules_set = set()
+
+    def _cleanup(self) -> None:
+        super()._cleanup()
+        self._temp_rules_set = set()
 
     # ── Tree fitting ──────────────────────────────────────────────
 
@@ -178,21 +182,21 @@ class RUGClassifier(_RUGBASE):
 
     # ── Matrix building ───────────────────────────────────────────
 
+    @staticmethod
+    def _rule_key(rule):
+        return frozenset(rule._get_clause(i) for i in range(rule.n_clauses))
+
     def _get_matrix(self, x, y, vec_y, fit_tree, treeno, betas=None, normalization_constant=None):
-        if self.coefficients_.cols.shape[0] == 0:
-            col = 0
+        if self._cols_chunks:
+            col = int(np.max(self._cols_chunks[-1])) + 1
         else:
-            col = np.max(self.coefficients_.cols) + 1
+            col = 0
 
         y_rules = fit_tree.apply(x)
         preds = fit_tree.predict(x).astype(np.intp)
 
         no_improvement = True
         node_info = self._build_node_info(fit_tree)
-
-        neg_val = -1 / (self.k_ - 1)
-        label_vectors = np.full((self.k_, self.k_), neg_val)
-        np.fill_diagonal(label_vectors, 1.0)
 
         rows_list, cols_list, yvals_list, costs_list = [], [], [], []
 
@@ -202,7 +206,8 @@ class RUGClassifier(_RUGBASE):
         for leafno in np.unique(y_rules):
             temp_rule = self._get_rule(fit_tree, leafno, node_info)
 
-            if temp_rule in self._temp_rules:
+            key = self._rule_key(temp_rule)
+            if key in self._temp_rules_set:
                 continue
 
             covers = np.where(y_rules == leafno)[0]
@@ -210,7 +215,7 @@ class RUGClassifier(_RUGBASE):
             counts = counts[counts > 0]
             label = preds[covers[0]]
 
-            fill_ahat = np.dot(vec_y[covers, :], label_vectors[label])
+            fill_ahat = np.dot(vec_y[covers, :], self._label_vectors[label])
 
             cost = self._get_rule_cost(temp_rule=temp_rule, covers=covers, counts=counts, y=y)
 
@@ -223,20 +228,19 @@ class RUGClassifier(_RUGBASE):
 
             if red_cost > 0:
                 rows_list.append(covers)
-                cols_list.append(np.full(covers.shape[0], col, dtype=np.int32))
-                yvals_list.append(np.full(covers.shape[0], fill_ahat, dtype=np.float32))
+                cols_list.append(np.full(covers.shape[0], col, dtype=np.intp))
+                yvals_list.append(np.asarray(fill_ahat, dtype=np.float64))
                 costs_list.append(cost)
                 self.rule_info_[col] = (treeno, leafno, label, counts)
+                self._temp_rules_set.add(key)
                 col += 1
                 no_improvement = False
 
         if rows_list:
-            self.coefficients_.rows = np.concatenate([self.coefficients_.rows] + rows_list)
-            self.coefficients_.cols = np.concatenate([self.coefficients_.cols] + cols_list)
-            self.coefficients_.yvals = np.concatenate([self.coefficients_.yvals] + yvals_list)
-            self.coefficients_.costs = np.concatenate(
-                [self.coefficients_.costs, np.array(costs_list, dtype=np.float64)]
-            )
+            self._rows_chunks.append(np.concatenate(rows_list))
+            self._cols_chunks.append(np.concatenate(cols_list))
+            self._yvals_chunks.append(np.concatenate(yvals_list))
+            self._costs_chunks.append(np.array(costs_list, dtype=np.float64))
 
         return no_improvement
 
@@ -257,7 +261,13 @@ class RUGClassifier(_RUGBASE):
 
         self._get_class_infos(y)
         vec_y = self._preprocess(y)
+
+        neg_val = -1 / (self.k_ - 1)
+        self._label_vectors = np.full((self.k_, self.k_), neg_val)
+        np.fill_diagonal(self._label_vectors, 1.0)
+
         self._get_matrix(x, y, vec_y, fit_tree, treeno)
+        self._materialize_coefficients()
 
         normalization_constant = 1.0 / np.max(self.coefficients_.costs)
 
@@ -278,6 +288,7 @@ class RUGClassifier(_RUGBASE):
             if self._get_matrix(x, y, vec_y, fit_tree, treeno, betas, normalization_constant):
                 break
 
+            self._materialize_coefficients()
             ws, betas = self.solver(
                 coefficients=self.coefficients_, k=self.k_,
                 normalization_constant=normalization_constant,

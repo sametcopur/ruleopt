@@ -113,7 +113,7 @@ class HiGHSSolver(OptimizationSolver):
         # Constraints: U^T β <= c  (m rows)
         if not isinstance(unique_rows_sp, csr_matrix):
             unique_rows_sp = csr_matrix(unique_rows_sp)
-        UT = unique_rows_sp.T.tocsr()
+        UT = unique_rows_sp.tocsc().T  # CSC.T yields CSR without sorting
 
         row_lower = np.full(m, -inf)
         row_upper = (costs * self.penalty * normalization_constant).astype(np.float64)
