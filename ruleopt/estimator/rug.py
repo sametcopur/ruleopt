@@ -1,0 +1,346 @@
+from __future__ import annotations
+
+import numpy as np
+from numpy.typing import ArrayLike
+from sklearn.utils.class_weight import compute_sample_weight
+from obliquetree import Classifier as ObliqueTreeClassifier
+from obliquetree.utils import export_tree
+
+from .base import _RUGBASE
+from ..aux_classes import Rule
+from ..rule_cost import Gini
+from ..utils import check_inputs
+from ..solver import HiGHSSolver
+
+
+class RUGClassifier(_RUGBASE):
+    """
+    Rule Generation algorithm for multi-class classification. This algorithm aims at
+    producing a compact and interpretable model by employing optimization-based rule learning.
+    """
+
+    def __init__(
+        self,
+        solver=HiGHSSolver(),
+        rule_cost=Gini(),
+        max_rmp_calls=10,
+        threshold: float = 1.0e-6,
+        random_state: int | None = None,
+        class_weight: dict | str | None = None,
+        criterion: str = "gini",
+        max_depth: int | None = None,
+        min_samples_split: int = 2,
+        min_samples_leaf: int = 1,
+        ccp_alpha: float = 0.0,
+        categories: list | None = None,
+        use_oblique: bool = False,
+        n_pair: int = 2,
+    ):
+        """
+        Parameters
+        ----------
+        solver : OptimizationSolver, default=HiGHSSolver()
+            An instance of a derived class inherits from the 'Optimization Solver' base class.
+
+        rule_cost : RuleCost or int, default=Gini()
+            Defines the cost of rules, either as a specific calculation method (RuleCost instance)
+            or a fixed cost
+
+        max_rmp_calls : int, default=10
+            Maximum number of Restricted Master Problem (RMP) iterations allowed during fitting.
+
+        class_weight: dict, "balanced" or None, default=None
+            A dictionary mapping class labels to their respective weights, the string "balanced"
+            to automatically adjust weights inversely proportional to class frequencies,
+            or None for no weights.
+
+        threshold : float, default=1.0e-6
+            The minimum weight threshold for including a rule in the final model.
+
+        random_state : int or None, default=None
+            Seed for the random number generator to ensure reproducible results.
+
+        criterion : {"gini", "entropy"}, default="gini"
+            The function to measure the quality of a split.
+
+        max_depth : int, default=None
+            The maximum depth of the tree. If None, nodes are expanded until
+            all leaves are pure or contain fewer than min_samples_split samples.
+
+        min_samples_split : int, default=2
+            The minimum number of samples required to split an internal node.
+
+        min_samples_leaf : int, default=1
+            The minimum number of samples required to be at a leaf node.
+
+        ccp_alpha : non-negative float, default=0.0
+            Complexity parameter used for Minimal Cost-Complexity Pruning.
+
+        categories : list or None, default=None
+            List of column indices representing categorical features.
+
+        use_oblique : bool, default=False
+            Whether to use oblique (multi-feature) splits in the decision trees.
+
+        n_pair : int, default=2
+            Number of features to combine per oblique split. Only used when use_oblique=True.
+        """
+        self._validate_parameters(
+            max_rmp_calls, criterion, max_depth,
+            min_samples_split, min_samples_leaf, ccp_alpha,
+            use_oblique, n_pair,
+        )
+
+        super().__init__(
+            threshold=threshold,
+            random_state=random_state,
+            solver=solver,
+            rule_cost=rule_cost,
+            class_weight=class_weight,
+        )
+
+        self.max_rmp_calls = int(max_rmp_calls)
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.ccp_alpha = ccp_alpha
+        self.categories = categories
+        self.use_oblique = use_oblique
+        self.n_pair = n_pair
+
+        self._temp_rules_set = set()
+
+    def _cleanup(self) -> None:
+        super()._cleanup()
+        self._temp_rules_set = set()
+
+    # ── Tree fitting ──────────────────────────────────────────────
+
+    def _fit_decision_tree(self, x, y, sample_weight):
+        dt = ObliqueTreeClassifier(
+            random_state=int(self._rng.integers(np.iinfo(np.int16).max)),
+            max_depth=self.max_depth if self.max_depth is not None else -1,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            ccp_alpha=self.ccp_alpha,
+            use_oblique=self.use_oblique,
+            n_pair=self.n_pair,
+            categories=self.categories if self.categories is not None else [],
+        )
+        return dt.fit(x, y, sample_weight=sample_weight)
+
+    # ── Rule extraction (obliquetree export_tree based) ───────────
+
+    @staticmethod
+    def _build_node_info(fit_tree) -> dict | None:
+        """Flatten export_tree nested dict to node_info via pre-order traversal."""
+        tree_dict = export_tree(fit_tree)["tree"]
+
+        nodes = []
+
+        def traverse(node):
+            idx = len(nodes)
+            nodes.append(node)
+            if not node.get("is_leaf", False):
+                node["_left_idx"] = traverse(node["left"])
+                node["_right_idx"] = traverse(node["right"])
+            return idx
+
+        traverse(tree_dict)
+
+        if len(nodes) == 1:
+            return None
+
+        node_info = {}
+
+        for i, node in enumerate(nodes):
+            if not node.get("is_leaf", False):
+                mgl = node.get("missing_go_left", True)
+                node_info[node["_left_idx"]] = (i, True, mgl)
+                node_info[node["_right_idx"]] = (i, False, not mgl)
+
+        node_info["_nodes"] = nodes
+        return node_info
+
+    def _get_rule(self, fit_tree, nodeid: int, node_info: dict = None) -> Rule:
+        return_rule = Rule()
+
+        if node_info is None:
+            node_info = self._build_node_info(fit_tree)
+            if node_info is None:
+                return Rule()
+
+        nodes = node_info["_nodes"]
+
+        while nodeid != 0:
+            parent, is_left, missing = node_info[nodeid]
+            parent_node = nodes[parent]
+
+            if parent_node.get("is_oblique", False):
+                return_rule.add_oblique_clause(
+                    parent_node["weights"],
+                    parent_node["features"],
+                    parent_node["threshold"],
+                    is_left,
+                )
+            else:
+                thresh = parent_node["threshold"]
+                return_rule.add_clause(
+                    parent_node["feature_idx"],
+                    thresh if is_left else np.inf,
+                    -np.inf if is_left else thresh,
+                    missing,
+                )
+
+            nodeid = parent
+
+        return return_rule
+
+    # ── Matrix building ───────────────────────────────────────────
+
+    @staticmethod
+    def _rule_key(rule):
+        single = frozenset(rule._get_clause(i) for i in range(rule.n_clauses))
+        oblique = frozenset(rule._get_oblique_clause(i) for i in range(rule.n_oblique_clauses))
+        return (single, oblique)
+
+    def _get_matrix(self, x, y, vec_y, fit_tree, treeno, betas=None, normalization_constant=None):
+        if self._cols_chunks:
+            col = int(np.max(self._cols_chunks[-1])) + 1
+        else:
+            col = 0
+
+        y_rules = fit_tree.apply(x)
+        preds = fit_tree.predict(x).astype(np.intp)
+
+        no_improvement = True
+        node_info = self._build_node_info(fit_tree)
+
+        rows_list, cols_list, yvals_list, costs_list = [], [], [], []
+
+        check_reduced_cost = (betas is not None) & (normalization_constant is not None)
+        k_ratio = (self.k_ - 1.0) / self.k_
+
+        for leafno in np.unique(y_rules):
+            temp_rule = self._get_rule(fit_tree, leafno, node_info)
+
+            key = self._rule_key(temp_rule)
+            if key in self._temp_rules_set:
+                continue
+
+            covers = np.where(y_rules == leafno)[0]
+            full_counts = np.bincount(y[covers], minlength=self.k_)
+            counts = full_counts[full_counts > 0]
+            label = preds[covers[0]]
+
+            fill_ahat = np.dot(vec_y[covers, :], self._label_vectors[label])
+
+            cost = self._get_rule_cost(temp_rule=temp_rule, covers=covers, counts=counts, y=y)
+
+            if check_reduced_cost:
+                red_cost = np.dot(k_ratio * fill_ahat, betas[covers]) - (
+                    cost * self.solver.penalty * normalization_constant
+                )
+            else:
+                red_cost = float("inf")
+
+            if red_cost > 0:
+                rows_list.append(covers)
+                cols_list.append(np.full(covers.shape[0], col, dtype=np.intp))
+                yvals_list.append(np.asarray(fill_ahat, dtype=np.float64))
+                costs_list.append(cost)
+                self.rule_info_[col] = (treeno, leafno, label, full_counts)
+                self._temp_rules_set.add(key)
+                col += 1
+                no_improvement = False
+
+        if rows_list:
+            self._rows_chunks.append(np.concatenate(rows_list))
+            self._cols_chunks.append(np.concatenate(cols_list))
+            self._yvals_chunks.append(np.concatenate(yvals_list))
+            self._costs_chunks.append(np.array(costs_list, dtype=np.float64))
+
+        return no_improvement
+
+    # ── Fit ───────────────────────────────────────────────────────
+
+    def fit(self, x: ArrayLike, y: ArrayLike, sample_weight: ArrayLike | None = None):
+        x, y = check_inputs(x, y)
+        sample_weight = self._get_sample_weight(sample_weight, y)
+
+        if self._is_fitted:
+            self._cleanup()
+
+        treeno = 0
+        initial_sw = compute_sample_weight(self.class_weight, y) if self.class_weight is not None else None
+
+        fit_tree = self._fit_decision_tree(x, y, sample_weight=initial_sw)
+        self.decision_trees_[treeno] = fit_tree
+
+        self._get_class_infos(y)
+        vec_y = self._preprocess(y)
+
+        neg_val = -1 / (self.k_ - 1)
+        self._label_vectors = np.full((self.k_, self.k_), neg_val)
+        np.fill_diagonal(self._label_vectors, 1.0)
+
+        self._get_matrix(x, y, vec_y, fit_tree, treeno)
+        self._materialize_coefficients()
+
+        normalization_constant = 1.0 / np.max(self.coefficients_.costs)
+
+        ws, betas = self.solver(
+            coefficients=self.coefficients_, k=self.k_,
+            sample_weight=sample_weight, normalization_constant=normalization_constant,
+            rng=self._rng,
+        )
+
+        for _ in range(self.max_rmp_calls):
+            if np.all(betas <= 1e-6):
+                break
+
+            treeno += 1
+            fit_tree = self._fit_decision_tree(x, y, sample_weight=betas)
+            self.decision_trees_[treeno] = fit_tree
+
+            if self._get_matrix(x, y, vec_y, fit_tree, treeno, betas, normalization_constant):
+                break
+
+            self._materialize_coefficients()
+            ws, betas = self.solver(
+                coefficients=self.coefficients_, k=self.k_,
+                normalization_constant=normalization_constant,
+                sample_weight=sample_weight, rng=self._rng,
+            )
+
+        self._fill_rules(ws)
+        self._is_fitted = True
+        return self
+
+    # ── Validation ────────────────────────────────────────────────
+
+    @staticmethod
+    def _validate_parameters(max_rmp_calls, criterion, max_depth,
+                             min_samples_split, min_samples_leaf, ccp_alpha,
+                             use_oblique=False, n_pair=2):
+        if not isinstance(max_rmp_calls, (float, int)):
+            raise TypeError("max_rmp_calls must be an integer.")
+        if max_rmp_calls < 0:
+            raise ValueError("max_rmp_calls must be a non-negative integer.")
+        if criterion not in {"gini", "entropy"}:
+            raise ValueError("criterion must be one of 'gini' or 'entropy'.")
+        if max_depth is not None and not isinstance(max_depth, int):
+            raise TypeError("max_depth must be an integer or None.")
+        if isinstance(max_depth, int) and max_depth < 1:
+            raise ValueError("max_depth must be greater than 0.")
+        if not isinstance(min_samples_split, int) or min_samples_split < 2:
+            raise ValueError("min_samples_split must be an integer >= 2.")
+        if not isinstance(min_samples_leaf, int) or min_samples_leaf < 1:
+            raise ValueError("min_samples_leaf must be an integer >= 1.")
+        if not isinstance(ccp_alpha, float) or ccp_alpha < 0.0:
+            raise ValueError("ccp_alpha must be a non-negative float.")
+        if not isinstance(use_oblique, bool):
+            raise TypeError("use_oblique must be a boolean.")
+        if not isinstance(n_pair, int) or n_pair < 1:
+            raise ValueError("n_pair must be a positive integer.")

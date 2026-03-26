@@ -23,7 +23,7 @@ where
 
 For detailed information, please refer to `our manuscript <https://arxiv.org/abs/2104.10751>`_.
 
-.. autoclass:: ruleopt.solver.ORToolsSolver
+.. autoclass:: ruleopt.solver.HiGHSSolver
    :members:  __init__
    :undoc-members:
 

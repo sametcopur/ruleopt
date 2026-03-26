@@ -11,7 +11,10 @@ class CPLEXSolver(OptimizationSolver):
     """
     A solver wrapper class for linear optimization using the CPLEX solver.
 
-    The solver supports both dense and sparse matrix representations.
+    Solves the dual LP directly:
+        max  1^T β
+        s.t. U^T β <= c
+             0 <= β <= s
     """
 
     def __new__(cls, *args, **kwargs):
@@ -53,83 +56,66 @@ class CPLEXSolver(OptimizationSolver):
         *args,
         **kwargs,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Parameters
-        ----------
-        coefficients : object
-            An object containing the sparse matrix coefficients ('yvals', 'rows', 'cols'),
-            and costs associated with each rule ('costs').
-        k : float
-            A scaling factor for the coefficients.
-        ws0 : array-like, optional
-            Initial weights for the optimization process. If provided, should have the same
-            length as the number of rules. Otherwise, weights are initialized to ones.
-
-        Returns
-        -------
-        ws : numpy.ndarray
-            The optimal weights for each rule.
-        betas : numpy.ndarray
-            The optimal dual solution.
-        """
         ### LAZY IMPORT
         from docplex.mp.model import Model
 
+        scale = (k - 1.0) / k
         a_hat = csr_matrix(
             (
-                coefficients.yvals,
+                np.asarray(coefficients.yvals, dtype=np.float64) * scale,
                 (coefficients.rows, coefficients.cols),
             ),
             dtype=np.float64,
-        ) * ((k - 1.0) / k)
-
-        if not self.use_sparse:
-            a_hat = a_hat.toarray()
-
-        costs = np.array(coefficients.costs, copy=False)
+        )
 
         n, m = a_hat.shape
-        # Primal Model
-        modprimal = Model("RUXG Primal")
+        costs = np.array(coefficients.costs, copy=False)
 
-        unique_rows, adjusted_sample_weight, inverse_indices = self.group_contraints(
+        unique_rows_sp, adjusted_sample_weight, inverse_indices = self.group_contraints(
             a_hat, sample_weight
         )
 
-        # Variables
-        vs = modprimal.continuous_var_list(unique_rows.shape[0], name="vs")
-        ws = modprimal.continuous_var_list(m, name="ws")
+        if not isinstance(unique_rows_sp, csr_matrix):
+            unique_rows_sp = csr_matrix(unique_rows_sp)
 
-        # Set initial values
-        initial_values = []
+        num_unique = unique_rows_sp.shape[0]
+        UT = unique_rows_sp.T.toarray()  # docplex needs dense indexing
 
-        if ws0 is not None:
-            initial_values += [(ws[i], ws0[i]) for i in range(len(ws0))]
+        c_rhs = (costs * self.penalty * normalization_constant).astype(np.float64)
 
-        # Assign initial solution
-        modprimal.start = initial_values
+        # Dual LP: max 1^T β  s.t. U^T β <= c,  0 <= β <= s
+        moddual = Model("RUG Dual")
 
-        # Objective
-        modprimal.minimize(
-            modprimal.sum(vs * adjusted_sample_weight)
-            + modprimal.scal_prod(ws, costs * self.penalty * normalization_constant)
-        )
-        # Constraints
-        for i in range(unique_rows.shape[0]):
-            modprimal.add_constraint(
-                modprimal.sum(unique_rows[i, j] * ws[j] for j in range(m)) + vs[i]
-                >= 1.0
+        # Variables: β bounded [0, s]
+        beta = [
+            moddual.continuous_var(lb=0.0, ub=float(adjusted_sample_weight[i]), name=f"b{i}")
+            for i in range(num_unique)
+        ]
+
+        # Objective: maximize sum(β)
+        moddual.maximize(moddual.sum(beta))
+
+        # Constraints: U^T β <= c  (one per rule)
+        for j in range(m):
+            moddual.add_constraint(
+                moddual.sum(UT[j, i] * beta[i] for i in range(num_unique) if UT[j, i] != 0)
+                <= c_rhs[j]
             )
 
-        modprimal.solve()
+        moddual.solve()
 
-        duals_unique = np.array(
-            [c.dual_value for c in modprimal.iter_constraints()], dtype=np.float64
+        # β directly from solution
+        duals_unique = np.array([v.solution_value for v in beta], dtype=np.float64)
+
+        # ws from dual of U^T β <= c
+        ws_X = np.array(
+            [c.dual_value for c in moddual.iter_constraints()], dtype=np.float64
         )
+        ws_X = np.maximum(ws_X, 0.0)
+        ws_X[ws_X < 1e-6] = 0.0
 
         betas = self.fill_betas(
             n, duals_unique, inverse_indices.ravel(), sample_weight, rng
         )
-        ws = np.array([v.solution_value for v in ws], dtype=np.float64)
 
-        return ws, betas
+        return ws_X, betas

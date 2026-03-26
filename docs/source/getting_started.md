@@ -13,7 +13,7 @@ To get started with `ruleopt`, you'll first need to install the package. You can
 ```bash
 pip install ruleopt
 ```
-Ensure you have Python 3.9 or later installed on your machine.
+Ensure you have Python 3.10 or later installed on your machine.
 
 ## Quick Start Guide
 
@@ -23,8 +23,8 @@ Let's dive in and see `ruleopt` in action. Here's a simple example to get you st
 
 ```python
 from ruleopt import RUGClassifier
-from ruleopt.cost import Gini
-from ruleopt.solver import ORToolsSolver
+from ruleopt.rule_cost import Gini
+from ruleopt.solver import HiGHSSolver
 ```
 1.  **Load Your Data**: Load your dataset. `ruleopt` works with data in `NumPy` arrays, `Pandas` DataFrames, and other common formats.
 
@@ -36,7 +36,7 @@ X_train, X_test, y_train, y_test = load_data(...)
 ```python
 # Define scikit-learn tree parameters in a dict, solver and rule_cost
 tree_parameters = {"max_depth": 3, "class_weight": "balanced"}
-solver = ORToolsSolver()
+solver = HiGHSSolver()
 rule_cost = Gini()
 random_state = 42
 
@@ -64,6 +64,22 @@ Congratulations on running your first model with `ruleopt`! To dive deeper into 
 
 ## Important Features
 
+### Oblique Splits
+
+`RUGClassifier` supports oblique (multi-feature) splits via the `use_oblique` and `n_pair` parameters. Oblique splits use linear combinations of features (e.g., `0.73*petal_length + -1.00*petal_width < 0.15`) instead of single-feature thresholds.
+
+```python
+clf = RUGClassifier(
+    use_oblique=True,
+    n_pair=2,       # number of features per split (2 recommended for interpretability)
+    max_depth=4,
+    random_state=42,
+)
+clf.fit(X_train, y_train)
+```
+
+Setting `n_pair=2` is recommended for interpretability, as each oblique clause involves only two features. Higher values increase model capacity but make individual rules harder to interpret.
+
 ### Handling Missing Values
 
 `ruleopt` is able to work natively with datasets that contain missing values. Thus, the preliminary steps to address or remove these missing values are not needed.
@@ -75,7 +91,7 @@ Congratulations on running your first model with `ruleopt`! To dive deeper into 
 - **Integration with scikit-learn Ensemble Models**: `ruleopt` enables the straightforward extraction of rules from `scikit-learn` ensemble models, such as Random Forests, Gradient Boosting Machines, and Extra-Trees Classifiers. This capability merges the interpretability objective of `ruleopt` with the predictive power and robustness of ensemble techniques.
 
 ```python
-from ruleopt import RUXCLassifier
+from ruleopt import RUXClassifier
 from sklearn.ensemble import RandomForestClassifier
 
 # Train a RandomForestClassifier
@@ -83,20 +99,20 @@ rf_classifier = RandomForestClassifier()
 rf_classifier.fit(X_train, y_train)
 
 # Extract rules from the trained model
-rux_classifier = RUXCLassifier(rf_classifier, solver = solver)
+rux_classifier = RUXClassifier(rf_classifier, solver=solver)
 rux_classifier.fit(X_train, y_train)
 ```
 -   **Integration with XGBoost and LightGBM**: `ruleopt` can also extract rules from models trained with `XGBoost` and  `LightGBM`. Using these rules, `ruleopt` trains a model with optimization to assign weights to rules and improve interpretability.
 
 ```python
-from ruleopt import RUXLGBMClassifier #RUXXGBClassifier
+from ruleopt import RUXLGBMClassifier  # or RUXXGBClassifier
 import lightgbm as lgb
 
 # Train an XGBoost model
-lgb_model = lgb.LGBMlassifier()
+lgb_model = lgb.LGBMClassifier()
 lgb_model.fit(X_train, y_train)
 
 # Extract rules from the trained LightGBM model
-rux_lgbm_classifier = RUXLGBClassifier(lgb_model, solver = solver)
+rux_lgbm_classifier = RUXLGBMClassifier(lgb_model, solver=solver)
 rux_lgbm_classifier.fit(X_train, y_train)
 ```

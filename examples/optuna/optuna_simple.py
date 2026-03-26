@@ -16,7 +16,7 @@ from sklearn.datasets import load_iris
 
 from ruleopt import RUGClassifier
 from ruleopt.rule_cost import Gini, Length
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 # Define the objective function for the Optuna study
 def objective(trial):
     # Set a random state for reproducibility
@@ -54,7 +54,7 @@ def objective(trial):
     }
 
     # Initialize the RUGClassifier with suggested parameters
-    solver = ORToolsSolver(penalty=penalty)
+    solver = HiGHSSolver(penalty=penalty)
     
     rug = RUGClassifier(
         solver,

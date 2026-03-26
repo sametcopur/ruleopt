@@ -16,11 +16,11 @@ sys.path.insert(0, project_path)
 
 
 project = "ruleopt"
-copyright = "2025, Samet Çopur"
+copyright = "2026, Samet Çopur"
 author = "Samet Çopur"
 
-version = '1.1.4'
-release = '1.1.4'
+version = '1.2.0'
+release = '1.2.0'
 
 autodoc_member_order = "bysource"
 extensions = [
@@ -29,7 +29,6 @@ extensions = [
     "sphinx.ext.napoleon",
     "numpydoc",
     "sphinx.ext.mathjax",
-    "sphinx_rtd_theme",
     "myst_parser",
 ]
 
@@ -46,7 +45,7 @@ templates_path = ["_templates"]
 exclude_patterns = []
 
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_static_path = ["_static"]
 
 def setup(app: Sphinx):

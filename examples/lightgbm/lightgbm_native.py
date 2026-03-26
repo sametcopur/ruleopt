@@ -16,7 +16,7 @@ from sklearn.metrics import accuracy_score
 
 from ruleopt import RUXLGBMClassifier
 from ruleopt.rule_cost import Mixed
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 
 
 def main():
@@ -57,7 +57,7 @@ def main():
 
     # Initialize a RUXLGBMClassifier with the trained LightGBM Booster
     rule_cost = Mixed(w=0.5)
-    solver = ORToolsSolver()
+    solver = HiGHSSolver()
 
     rux = RUXLGBMClassifier(
         gbm, solver=solver, random_state=random_state, rule_cost=rule_cost

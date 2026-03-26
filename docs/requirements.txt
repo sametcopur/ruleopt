@@ -4,5 +4,5 @@ pandas>=2.2.3
 scipy>=1.14.1
 numpydoc>=1.6.0
 myst-parser>=2.0.0
-sphinx_rtd_theme>=2.0.0
-ortools>=9.9.3963
+furo
+highspy>=1.13.1

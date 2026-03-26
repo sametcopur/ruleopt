@@ -72,6 +72,11 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
         self.decision_rules_ = {}
         self.rule_info_ = {}
         self.coefficients_ = Coefficients()
+        self._rows_chunks = []
+        self._cols_chunks = []
+        self._yvals_chunks = []
+        self._costs_chunks = []
+        self._materialized_count = 0
 
         self._is_fitted: bool = False
         self.majority_class_: int = None
@@ -91,9 +96,35 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
 
         # Cleaning up coefficients
         self.coefficients_.cleanup()
+        self._rows_chunks = []
+        self._cols_chunks = []
+        self._yvals_chunks = []
+        self._costs_chunks = []
+        self._materialized_count = 0
 
         # Resetting the random number generator
         self._rng = np.random.default_rng(self.random_state)
+
+    def _materialize_coefficients(self):
+        n_total = len(self._rows_chunks)
+        if n_total == 0 or n_total == self._materialized_count:
+            return
+        new = slice(self._materialized_count, n_total)
+        if self._materialized_count == 0:
+            self.coefficients_.rows = np.concatenate(self._rows_chunks[new])
+            self.coefficients_.cols = np.concatenate(self._cols_chunks[new])
+            self.coefficients_.yvals = np.concatenate(self._yvals_chunks[new])
+            self.coefficients_.costs = np.concatenate(self._costs_chunks[new])
+        else:
+            self.coefficients_.rows = np.concatenate(
+                [np.asarray(self.coefficients_.rows)] + self._rows_chunks[new])
+            self.coefficients_.cols = np.concatenate(
+                [np.asarray(self.coefficients_.cols)] + self._cols_chunks[new])
+            self.coefficients_.yvals = np.concatenate(
+                [np.asarray(self.coefficients_.yvals)] + self._yvals_chunks[new])
+            self.coefficients_.costs = np.concatenate(
+                [np.asarray(self.coefficients_.costs)] + self._costs_chunks[new])
+        self._materialized_count = n_total
 
     @abstractmethod
     def _get_rule(self, *arg, **kwargs) -> Rule: ...
@@ -229,10 +260,17 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
         self.rule_columns_ = ordered_columns
 
         # Iterate over the columns and fill the rules dictionary
+        build_node_info = getattr(self, "_build_node_info", None)
+        node_info_cache = {} if callable(build_node_info) else None
         for i, col in enumerate(ordered_columns):
             treeno, leafno, label, sdist = self.rule_info_[col]
             fit_tree = self.decision_trees_[treeno]
-            rule = self._get_rule(fit_tree, leafno)
+            if node_info_cache is not None:
+                if treeno not in node_info_cache:
+                    node_info_cache[treeno] = build_node_info(fit_tree)
+                rule = self._get_rule(fit_tree, leafno, node_info_cache[treeno])
+            else:
+                rule = self._get_rule(fit_tree, leafno)
             if len(rule) > 0:
                 rule.label = label
                 rule.weight = weights[col]
@@ -246,6 +284,7 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
         threshold: float = 0,
         *,
         predict_info=False,
+        soft_proba=False,
     ) -> np.ndarray:
         """
         Calculates the base class weights for each instance based on selected rules.
@@ -308,14 +347,19 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
             rule_labels[rule_index] = rule.label
             rule_matrix[:, rule_index] = rule.check_rule(x)
 
-        sum_class_weights_arr = np.zeros(shape=(x.shape[0], self.k_), dtype=np.float32)
-
         weights_matrix = rule_matrix * rule_weights
-        for rule_label in range(self.k_):
-            selected_rules_indexs = np.where(rule_labels == rule_label)[0]
-            sum_class_weights_arr[:, rule_label] = np.sum(
-                weights_matrix[:, selected_rules_indexs], axis=1
-            )
+        label_indicator = np.zeros((len(selected_rules), self.k_), dtype=np.float32)
+        if soft_proba:
+            for j, rule in enumerate(selected_rules):
+                sdist = np.asarray(rule.sdist, dtype=np.float32)
+                total = sdist.sum()
+                if total > 0 and len(sdist) == self.k_:
+                    label_indicator[j] = sdist / total
+                else:
+                    label_indicator[j, rule.label] = 1.0
+        else:
+            label_indicator[np.arange(len(rule_labels)), rule_labels] = 1.0
+        sum_class_weights_arr = weights_matrix @ label_indicator
 
         # Return the array of class weights
         if predict_info:
@@ -456,12 +500,14 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
 
         else:
             sum_class_weights_arr = self._predict_base(
-                x, indices, threshold, predict_info=predict_info
+                x, indices, threshold, predict_info=predict_info,
+                soft_proba=True,
             )
 
             total_weights = np.sum(sum_class_weights_arr, axis=1)
             near_zero_total_weight = total_weights <= 1e-6
-            predictions = np.divide(sum_class_weights_arr, total_weights.reshape(-1, 1))
+            with np.errstate(divide="ignore", invalid="ignore"):
+                predictions = np.divide(sum_class_weights_arr, total_weights.reshape(-1, 1))
             predictions[near_zero_total_weight, :] = self.majority_probability_
 
             return predictions

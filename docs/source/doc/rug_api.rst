@@ -11,6 +11,13 @@ The approach allows for a detailed tuning of the model through various parameter
 
 In essence, ``RUGClassifier`` is built to offer a blend of accuracy and interpretability in classification tasks, making it suitable for applications where understanding the model's decision-making process is as important as the accuracy of its predictions.
 
+Oblique Splits
+--------------
+
+``RUGClassifier`` supports oblique (multi-feature) splits through the ``use_oblique`` and ``n_pair`` parameters. When enabled, decision tree nodes can split on linear combinations of features (e.g., ``0.73*x1 + -1.00*x2 < 0.15``) instead of single-feature thresholds only.
+
+Note that enabling oblique splits reduces interpretability, since each clause involves a weighted combination of multiple features rather than a simple threshold on a single feature. To minimize this trade-off, we recommend setting ``n_pair=2`` so that each oblique clause combines at most two features.
+
 .. autoclass:: ruleopt.RUGClassifier
    :members: __init__, fit, predict, predict_proba, is_fitted, decision_trees, decision_rules, rule_info, coefficients, majority_class, majority_probability, k, classes, rule_columns
    :undoc-members:

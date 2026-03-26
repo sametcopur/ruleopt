@@ -12,9 +12,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
 
 from ruleopt import RUGClassifier
-from ruleopt.cost import Gini
+from ruleopt.rule_cost import Gini
 from ruleopt.explainer import Explainer
-from ruleopt.solver import ORToolsSolver
+from ruleopt.solver import HiGHSSolver
 ```
 
 ## Step 2: Prepare the Data
@@ -33,7 +33,7 @@ Set up the `RUGClassifier` with specific parameters and fit it to the training d
 ```python
 # Define tree parameters, solver and rule_cost
 tree_parameters = {"max_depth": 3, "class_weight": "balanced"}
-solver = ORToolsSolver()
+solver = HiGHSSolver()
 rule_cost = Gini()
 
 # Initialize the RUGClassifier with specific parameters
@@ -65,23 +65,36 @@ Retrieve and print details for all rules:
 rule_details = exp.retrieve_rule_details(feature_names=["sepal length", "sepal width", "petal length", "petal width"], info=True)
 ```
 
-```markdown
-RULE 0:
--inf      < sepal length <= 6.35      and not null
-1.55      < petal width <= inf       or null
--inf      < sepal width <= 3.10      or null
-Class: 2
-Scaled rule weight: 1.0000
-
-RULE 1:
--inf      < petal width <= 1.55      and not null
-4.90      < petal length <= inf       or null
--inf      < sepal width <= 3.10      or null
-Class: 2
-Scaled rule weight: 0.6667
+```
++-------------------------------------------------------------+
+| Rule 0  |  Class: 2  |  Weight: 1.0000                      |
++-------------------------------------------------------------+
+| single | -inf < sepal length <= 6.35             | not null |
+| single | 1.55 < petal width <= inf               | or null  |
+| single | -inf < sepal width <= 3.10              | or null  |
++-------------------------------------------------------------+
++-------------------------------------------------------------+
+| Rule 1  |  Class: 2  |  Weight: 0.6667                      |
++-------------------------------------------------------------+
+| single | -inf < petal width <= 1.55              | not null |
+| single | 4.90 < petal length <= inf              | or null  |
+| single | -inf < sepal width <= 3.10              | or null  |
++-------------------------------------------------------------+
 ```
 
-This step reveals the specific conditions or thresholds for various features like _sepal length_, _sepal width_, _petal length_, and _petal width_, that define each rule, along with the class association and the scaled rule weight. For example, Rule 0 defines conditions across multiple features and assigns these to Class 2 with a full rule weight, indicating a strong influence in classification decisions for this rule.
+Rules are displayed in a table format. Each row shows the clause type (`single` for single-feature, `oblique` for multi-feature), the condition, and null-handling behavior. When `use_oblique=True` is used, oblique clauses appear as linear combinations:
+
+```
++----------------------------------------------------------------------+
+| Rule 0  |  Class: 1  |  Weight: 1.0000                               |
++----------------------------------------------------------------------+
+| single  | -inf < petal length <= 5.05                      | or null |
+| oblique | -0.53*sepal width + 1.00*petal width < 0.19                |
+| oblique | 0.13*sepal length + -1.00*petal width < -0.08              |
++----------------------------------------------------------------------+
+```
+
+The returned dictionary also includes `n_clauses` and `n_oblique_clauses` fields for each rule.
 
 ### Find Applicable Rules for Test Samples
 
@@ -93,31 +106,33 @@ applicable_rules = exp.find_applicable_rules_for_samples(X_test, feature_names=[
 
 By applying the classifier's rules to the test samples, we identify which rules are activated for individual instances and observe their respective weights.
 
-```markdown
+```
 Rules for instance 0
-RULE 2:
--inf      < petal width <= 1.75      or null
-5.40      < sepal length <= 6.95      or null
-Class: 1
-Scaled rule weight: 0.6667
-
-RULE 5:
--inf      < petal length <= 4.95      or null
-0.80      < petal width <= 1.75      or null
-Class: 1
-Scaled rule weight: 0.4444
++--------------------------------------------------+
+| Rule 2  |  Class: 1  |  Weight: 0.6667           |
++--------------------------------------------------+
+| single | -inf < petal width <= 1.75   | or null  |
+| single | 5.40 < sepal length <= 6.95  | or null  |
++--------------------------------------------------+
++--------------------------------------------------+
+| Rule 5  |  Class: 1  |  Weight: 0.4444           |
++--------------------------------------------------+
+| single | -inf < petal length <= 4.95  | or null  |
+| single | 0.80 < petal width <= 1.75   | or null  |
++--------------------------------------------------+
 
 Rules for instance 1
-RULE 2:
--inf      < petal width <= 1.75      or null
-5.40      < sepal length <= 6.95      or null
-Class: 1
-Scaled rule weight: 0.6667
-
-RULE 4:
--inf      < petal width <= 0.80      and not null
-Class: 0
-Scaled rule weight: 0.4444
++--------------------------------------------------+
+| Rule 2  |  Class: 1  |  Weight: 0.6667           |
++--------------------------------------------------+
+| single | -inf < petal width <= 1.75   | or null  |
+| single | 5.40 < sepal length <= 6.95  | or null  |
++--------------------------------------------------+
++---------------------------------------------------+
+| Rule 4  |  Class: 0  |  Weight: 0.4444            |
++---------------------------------------------------+
+| single | -inf < petal width <= 0.80   | not null  |
++---------------------------------------------------+
 ```
 
 ### Summarize Rule Metrics
@@ -130,10 +145,13 @@ rule_metrics_summary = exp.summarize_rule_metrics(info=True)
 
 This summary provides an overview by detailing the total number of rules generated, the average rule length, and other metrics. 
 
-```markdown
+```
 Total number of rules: 7
 Average rule length: 2.00
+Total clauses: 12 single-feature, 8 oblique
 ```
+
+The clause breakdown (single-feature vs oblique) is shown when the model contains oblique rules.
 
 ### Evaluate Rule Coverage Metrics
 
