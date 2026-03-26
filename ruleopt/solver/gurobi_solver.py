@@ -85,7 +85,7 @@ class GurobiSolver(OptimizationSolver):
         moddual.setParam("OutputFlag", False)
         moddual.setParam("Method", 3)
         moddual.setParam("Crossover", 0)
-        moddual.setParam("Presolve", 1)
+        moddual.setParam("Presolve", 0)
         moddual.setParam("BarConvTol", 1e-4)
 
         # Variables: β (num_unique), bounded [0, s]

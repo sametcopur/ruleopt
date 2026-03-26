@@ -68,7 +68,7 @@ class HiGHSSolver(OptimizationSolver):
             self._h.setOptionValue("output_flag", False)
             self._h.setOptionValue("solver", "ipm")
             self._h.setOptionValue("run_crossover", "off")
-            self._h.setOptionValue("presolve", "on")
+            self._h.setOptionValue("presolve", "off")
             self._h.setOptionValue("threads", 0)
             self._h.setOptionValue("ipm_optimality_tolerance", 1e-4)
 
