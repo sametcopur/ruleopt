@@ -8,7 +8,7 @@ dependencies = [
     "numpy>=2.2.3",
     "pandas>=2.3",
     "highspy>=1.13.1",
-    "obliquetree>=1.0.7",
+    "obliquetree>=1.1.1",
 ]
 authors = [
     { name = "Ilker Birbil", email = 'sibirbil@gmail.com' },

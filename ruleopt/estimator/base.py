@@ -260,14 +260,17 @@ class _RUGBASE(BaseEstimator, ClassifierMixin):
         self.rule_columns_ = ordered_columns
 
         # Iterate over the columns and fill the rules dictionary
-        # Cache node_info per tree to avoid rebuilding
-        node_info_cache = {}
+        build_node_info = getattr(self, "_build_node_info", None)
+        node_info_cache = {} if callable(build_node_info) else None
         for i, col in enumerate(ordered_columns):
             treeno, leafno, label, sdist = self.rule_info_[col]
             fit_tree = self.decision_trees_[treeno]
-            if treeno not in node_info_cache:
-                node_info_cache[treeno] = self._build_node_info(fit_tree)
-            rule = self._get_rule(fit_tree, leafno, node_info_cache[treeno])
+            if node_info_cache is not None:
+                if treeno not in node_info_cache:
+                    node_info_cache[treeno] = build_node_info(fit_tree)
+                rule = self._get_rule(fit_tree, leafno, node_info_cache[treeno])
+            else:
+                rule = self._get_rule(fit_tree, leafno)
             if len(rule) > 0:
                 rule.label = label
                 rule.weight = weights[col]

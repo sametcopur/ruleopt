@@ -33,6 +33,8 @@ class RUGClassifier(_RUGBASE):
         min_samples_leaf: int = 1,
         ccp_alpha: float = 0.0,
         categories: list | None = None,
+        use_oblique: bool = False,
+        n_pair: int = 2,
     ):
         """
         Parameters
@@ -76,10 +78,17 @@ class RUGClassifier(_RUGBASE):
 
         categories : list or None, default=None
             List of column indices representing categorical features.
+
+        use_oblique : bool, default=False
+            Whether to use oblique (multi-feature) splits in the decision trees.
+
+        n_pair : int, default=2
+            Number of features to combine per oblique split. Only used when use_oblique=True.
         """
         self._validate_parameters(
             max_rmp_calls, criterion, max_depth,
             min_samples_split, min_samples_leaf, ccp_alpha,
+            use_oblique, n_pair,
         )
 
         super().__init__(
@@ -97,6 +106,8 @@ class RUGClassifier(_RUGBASE):
         self.min_samples_leaf = min_samples_leaf
         self.ccp_alpha = ccp_alpha
         self.categories = categories
+        self.use_oblique = use_oblique
+        self.n_pair = n_pair
 
         self._temp_rules_set = set()
 
@@ -113,7 +124,8 @@ class RUGClassifier(_RUGBASE):
             min_samples_split=self.min_samples_split,
             min_samples_leaf=self.min_samples_leaf,
             ccp_alpha=self.ccp_alpha,
-            use_oblique=False,
+            use_oblique=self.use_oblique,
+            n_pair=self.n_pair,
             categories=self.categories if self.categories is not None else [],
         )
         return dt.fit(x, y, sample_weight=sample_weight)
@@ -141,19 +153,14 @@ class RUGClassifier(_RUGBASE):
             return None
 
         node_info = {}
-        features = []
-        thresholds = []
 
         for i, node in enumerate(nodes):
-            features.append(node.get("feature_idx", -1))
-            thresholds.append(node.get("threshold", 0.0))
             if not node.get("is_leaf", False):
                 mgl = node.get("missing_go_left", True)
                 node_info[node["_left_idx"]] = (i, True, mgl)
                 node_info[node["_right_idx"]] = (i, False, not mgl)
 
-        node_info["_features"] = features
-        node_info["_thresholds"] = thresholds
+        node_info["_nodes"] = nodes
         return node_info
 
     def _get_rule(self, fit_tree, nodeid: int, node_info: dict = None) -> Rule:
@@ -164,18 +171,28 @@ class RUGClassifier(_RUGBASE):
             if node_info is None:
                 return Rule()
 
-        features = node_info["_features"]
-        thresholds = node_info["_thresholds"]
+        nodes = node_info["_nodes"]
 
         while nodeid != 0:
             parent, is_left, missing = node_info[nodeid]
-            thresh = thresholds[parent]
-            return_rule.add_clause(
-                features[parent],
-                thresh if is_left else np.inf,
-                -np.inf if is_left else thresh,
-                missing,
-            )
+            parent_node = nodes[parent]
+
+            if parent_node.get("is_oblique", False):
+                return_rule.add_oblique_clause(
+                    parent_node["weights"],
+                    parent_node["features"],
+                    parent_node["threshold"],
+                    is_left,
+                )
+            else:
+                thresh = parent_node["threshold"]
+                return_rule.add_clause(
+                    parent_node["feature_idx"],
+                    thresh if is_left else np.inf,
+                    -np.inf if is_left else thresh,
+                    missing,
+                )
+
             nodeid = parent
 
         return return_rule
@@ -184,7 +201,9 @@ class RUGClassifier(_RUGBASE):
 
     @staticmethod
     def _rule_key(rule):
-        return frozenset(rule._get_clause(i) for i in range(rule.n_clauses))
+        single = frozenset(rule._get_clause(i) for i in range(rule.n_clauses))
+        oblique = frozenset(rule._get_oblique_clause(i) for i in range(rule.n_oblique_clauses))
+        return (single, oblique)
 
     def _get_matrix(self, x, y, vec_y, fit_tree, treeno, betas=None, normalization_constant=None):
         if self._cols_chunks:
@@ -303,7 +322,8 @@ class RUGClassifier(_RUGBASE):
 
     @staticmethod
     def _validate_parameters(max_rmp_calls, criterion, max_depth,
-                             min_samples_split, min_samples_leaf, ccp_alpha):
+                             min_samples_split, min_samples_leaf, ccp_alpha,
+                             use_oblique=False, n_pair=2):
         if not isinstance(max_rmp_calls, (float, int)):
             raise TypeError("max_rmp_calls must be an integer.")
         if max_rmp_calls < 0:
@@ -320,3 +340,7 @@ class RUGClassifier(_RUGBASE):
             raise ValueError("min_samples_leaf must be an integer >= 1.")
         if not isinstance(ccp_alpha, float) or ccp_alpha < 0.0:
             raise ValueError("ccp_alpha must be a non-negative float.")
+        if not isinstance(use_oblique, bool):
+            raise TypeError("use_oblique must be a boolean.")
+        if not isinstance(n_pair, int) or n_pair < 1:
+            raise ValueError("n_pair must be a positive integer.")

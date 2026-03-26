@@ -85,6 +85,8 @@ class Explainer:
                     else "No Rule: Set Majority Class"
                 ),
                 "sdist": rule.sdist.tolist(),
+                "n_clauses": rule.n_clauses,
+                "n_oblique_clauses": rule.n_oblique_clauses,
             }
             return_dict[indx] = rule_details
             if info:
@@ -181,6 +183,12 @@ class Explainer:
         )
         print(rule_description)
         print(f"Class: {rule.label}")
+        clause_parts = []
+        if rule.n_clauses > 0:
+            clause_parts.append(f"{rule.n_clauses} single-feature")
+        if rule.n_oblique_clauses > 0:
+            clause_parts.append(f"{rule.n_oblique_clauses} oblique")
+        print(f"Clauses: {' + '.join(clause_parts)} (total {len(rule)})")
         print(f"Scaled rule weight: {rule.weight:.4f}\n")
 
     def summarize_rule_metrics(self, info: bool = True) -> dict:
@@ -201,16 +209,23 @@ class Explainer:
             A dictionary containing 'num_of_rules' (the total number of rules) and
             'avg_rule_length' (the average length of the rules).
         """
-        num_of_rules = len(self.estimator.decision_rules_)
-        avg_rule_length = np.mean(
-            [len(rule) for rule in self.estimator.decision_rules_.values()]
-        )
+        rules = self.estimator.decision_rules_
+        num_of_rules = len(rules)
+        avg_rule_length = np.mean([len(r) for r in rules.values()])
+        total_single = sum(r.n_clauses for r in rules.values())
+        total_oblique = sum(r.n_oblique_clauses for r in rules.values())
 
         if info:
             print(f"Total number of rules: {num_of_rules}")
             print(f"Average rule length: {avg_rule_length:.2f}")
+            if total_oblique > 0:
+                print(f"Total clauses: {total_single} single-feature, {total_oblique} oblique")
 
-        return {"num_of_rules": num_of_rules, "avg_rule_length": avg_rule_length}
+        result = {"num_of_rules": num_of_rules, "avg_rule_length": avg_rule_length}
+        if total_oblique > 0:
+            result["total_single_clauses"] = total_single
+            result["total_oblique_clauses"] = total_oblique
+        return result
 
     def evaluate_rule_coverage_metrics(self, x: ArrayLike, info: bool = True) -> dict:
         """
