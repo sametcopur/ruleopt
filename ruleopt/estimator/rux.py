@@ -55,6 +55,31 @@ class RUXClassifier(_RUGBASE):
         threshold: float = 1.0e-6,
         random_state: int | None = None,
     ):
+        """
+        Parameters
+        ----------
+        trained_ensemble : sklearn ensemble
+            A fitted scikit-learn ensemble model such as RandomForestClassifier,
+            GradientBoostingClassifier, or ExtraTreesClassifier.
+
+        solver : OptimizationSolver, default=HiGHSSolver()
+            An instance of a derived class inherits from the 'Optimization Solver' base class.
+
+        rule_cost : RuleCost or int, default=Gini()
+            Defines the cost of rules, either as a specific calculation method (RuleCost instance)
+            or a fixed cost.
+
+        class_weight : dict, "balanced" or None, default=None
+            A dictionary mapping class labels to their respective weights, the string "balanced"
+            to automatically adjust weights inversely proportional to class frequencies,
+            or None for no weights.
+
+        threshold : float, default=1.0e-6
+            The minimum weight threshold for including a rule in the final model.
+
+        random_state : int or None, default=None
+            Seed for the random number generator to ensure reproducible results.
+        """
         self._validate_trained_ensemble(trained_ensemble)
 
         self.trained_ensemble = trained_ensemble
@@ -176,6 +201,24 @@ class RUXClassifier(_RUGBASE):
     # ── Fit ───────────────────────────────────────────────────────
 
     def fit(self, x: ArrayLike, y: ArrayLike, sample_weight: ArrayLike | None = None):
+        """
+        Fits the RUXClassifier by extracting rules from the trained ensemble
+        and optimizing their weights.
+
+        Parameters
+        ----------
+        x : array-like of shape (n_samples, n_features)
+            The training input samples. Internally, it will be converted to dtype=np.float32.
+        y : array-like of shape (n_samples,)
+            The target values (class labels) as integers.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights. If None, then samples get equal weights.
+
+        Returns
+        -------
+        RUXClassifier
+            The fitted model, ready for making predictions.
+        """
         x, y = check_inputs(x, y)
         sample_weight = self._get_sample_weight(sample_weight, y)
 

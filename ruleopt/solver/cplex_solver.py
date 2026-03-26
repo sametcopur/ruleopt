@@ -10,14 +10,6 @@ CPLEX_AVAILABLE = check_module_available("docplex")
 class CPLEXSolver(OptimizationSolver):
     """
     A solver wrapper class for linear optimization using the CPLEX solver.
-
-    Solves the dual LP directly:
-
-    .. code-block:: text
-
-        max  1^T beta
-        s.t. U^T beta <= c
-             0 <= beta <= s
     """
 
     def __new__(cls, *args, **kwargs):
