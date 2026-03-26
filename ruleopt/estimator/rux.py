@@ -118,7 +118,6 @@ class RUXClassifier(_RUGBASE):
             col = np.max(self.coefficients_.cols) + 1
 
         y_rules = fit_tree.apply(x)
-        preds = fit_tree.predict(x).astype(np.intp)
 
         no_improvement = True
         node_info = self._build_node_info(fit_tree)
@@ -136,9 +135,9 @@ class RUXClassifier(_RUGBASE):
             temp_rule = self._get_rule(fit_tree, leafno, node_info)
 
             covers = np.where(y_rules == leafno)[0]
-            counts = np.bincount(y[covers], minlength=self.k_)
-            counts = counts[counts > 0]
-            label = preds[covers[0]]
+            counts_full = np.bincount(y[covers], minlength=self.k_)
+            counts = counts_full[counts_full > 0]
+            label = int(np.argmax(counts_full))
 
             fill_ahat = np.dot(vec_y[covers, :], label_vectors[label])
 
