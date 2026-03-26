@@ -177,19 +177,46 @@ class Explainer:
             List of feature names for more readable rule descriptions. If None,
             feature indices are used.
         """
-        print(f"RULE {indx}:")
-        rule_description = (
-            rule.to_text(feature_names) if feature_names else rule.to_text()
-        )
-        print(rule_description)
-        print(f"Class: {rule.label}")
-        clause_parts = []
-        if rule.n_clauses > 0:
-            clause_parts.append(f"{rule.n_clauses} single-feature")
-        if rule.n_oblique_clauses > 0:
-            clause_parts.append(f"{rule.n_oblique_clauses} oblique")
-        print(f"Clauses: {' + '.join(clause_parts)} (total {len(rule)})")
-        print(f"Scaled rule weight: {rule.weight:.4f}\n")
+        clauses = []
+        for i in range(rule.n_clauses):
+            feature, ub, lb, na = rule._get_clause(i)
+            fname = feature_names[feature] if feature_names else f"x[{feature}]"
+            na_str = "or null" if na else "not null"
+            clauses.append(("single", f"{lb:.2f} < {fname} <= {ub:.2f}", na_str))
+        for i in range(rule.n_oblique_clauses):
+            w, f, thresh, is_left = rule._get_oblique_clause(i)
+            terms = []
+            for wi, fi in zip(w, f):
+                fname = feature_names[fi] if feature_names else f"x[{fi}]"
+                terms.append(f"{wi:.2f}*{fname}")
+            expr = " + ".join(terms)
+            op = "<" if is_left else ">="
+            clauses.append(("oblique", f"{expr} {op} {thresh:.2f}", ""))
+
+        if not clauses:
+            return
+
+        col_type_w = max(len(c[0]) for c in clauses)
+        col_cond_w = max(len(c[1]) for c in clauses)
+        has_na = any(c[2] for c in clauses)
+        col_na_w = max((len(c[2]) for c in clauses), default=0) if has_na else 0
+
+        inner_w = col_type_w + col_cond_w + 5
+        if has_na:
+            inner_w += col_na_w + 3
+        header = f" Rule {indx}  |  Class: {rule.label}  |  Weight: {rule.weight:.4f} "
+        inner_w = max(inner_w, len(header))
+
+        sep = "+" + "-" * (inner_w + 2) + "+"
+        print(sep)
+        print("| " + header.ljust(inner_w) + " |")
+        print(sep)
+        for typ, cond, na_str in clauses:
+            row = f" {typ:<{col_type_w}} | {cond:<{col_cond_w}}"
+            if has_na:
+                row += f" | {na_str:<{col_na_w}}"
+            print("| " + row.ljust(inner_w) + " |")
+        print(sep)
 
     def summarize_rule_metrics(self, info: bool = True) -> dict:
         """

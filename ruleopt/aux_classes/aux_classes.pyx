@@ -246,10 +246,10 @@ cdef class Rule:
                 fname = (f"x[{oc.features[j]}]"
                          if feature_names is None
                          else feature_names[oc.features[j]])
-                terms.append(f"{oc.weights[j]:.4f}*{fname}")
+                terms.append(f"{oc.weights[j]:.2f}*{fname}")
             expr = " + ".join(terms)
             op = "<" if oc.is_left else ">="
-            print_text += f"{expr} {op} {oc.threshold:.4f}\n"
+            print_text += f"{expr} {op} {oc.threshold:.2f}\n"
 
         return print_text.rstrip("\n")
 
